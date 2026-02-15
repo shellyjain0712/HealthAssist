@@ -19,12 +19,14 @@
 ## ✨ Features
 
 ### 🤖 AI Health Assistant
+
 - **Intelligent Symptom Analysis** - Describe your symptoms and get instant guidance
 - **Specialist Recommendations** - AI suggests the right type of doctor for your condition
 - **Empathetic Responses** - Natural conversation with helpful health advice
 - **Emergency Detection** - Identifies urgent symptoms requiring immediate care
 
 ### 👨‍⚕️ Doctor Portal
+
 - **Appointment Management** - View, confirm, complete, or cancel appointments
 - **Patient Records** - Access comprehensive patient medical histories
 - **Prescription Writing** - Create and manage digital prescriptions
@@ -32,6 +34,7 @@
 - **Dashboard Analytics** - Track daily appointments, patients, and more
 
 ### 👤 Patient Portal
+
 - **Doctor Discovery** - Browse doctors by specialty with ratings and fees
 - **Easy Booking** - Book appointments with preferred doctors in 3 simple steps
 - **Medical Records** - Upload and manage personal health records
@@ -39,6 +42,7 @@
 - **AI Chat Support** - 24/7 health guidance from our AI assistant
 
 ### 🔐 Security & Auth
+
 - **Secure Authentication** - NextAuth.js with credential-based login
 - **Password Recovery** - Email-based forgot password flow
 - **Role-Based Access** - Separate doctor and patient experiences
@@ -48,14 +52,14 @@
 
 ## 🛠 Tech Stack
 
-| Category | Technologies |
-|----------|-------------|
+| Category     | Technologies                                   |
+| ------------ | ---------------------------------------------- |
 | **Frontend** | Next.js 15, React 18, TypeScript, Tailwind CSS |
-| **Backend** | Next.js API Routes, NextAuth.js |
-| **Database** | PostgreSQL with Prisma ORM |
-| **AI** | Google Gemini API |
-| **Styling** | Tailwind CSS, Radix UI Components |
-| **Email** | Nodemailer |
+| **Backend**  | Next.js API Routes, NextAuth.js                |
+| **Database** | PostgreSQL with Prisma ORM                     |
+| **AI**       | Google Gemini API                              |
+| **Styling**  | Tailwind CSS, Radix UI Components              |
+| **Email**    | Nodemailer                                     |
 
 ---
 
@@ -63,19 +67,21 @@
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - PostgreSQL database
 - Google Gemini API key
 
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/shellyjain0712/HealthAssist.git
    cd HealthAssist
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    # or
@@ -83,19 +89,20 @@
    ```
 
 3. **Set up environment variables**
-   
+
    Create a `.env` file in the root directory:
+
    ```env
    # Database
    DATABASE_URL="postgresql://user:password@localhost:5432/healthassist"
-   
+
    # NextAuth
    NEXTAUTH_SECRET="your-secret-key"
    NEXTAUTH_URL="http://localhost:3000"
-   
+
    # Google Gemini AI
    GOOGLE_GEMINI_API_KEY="your-gemini-api-key"
-   
+
    # Email (Optional)
    EMAIL_SERVER_HOST="smtp.gmail.com"
    EMAIL_SERVER_PORT=587
@@ -105,12 +112,14 @@
    ```
 
 4. **Set up the database**
+
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
 5. **Run the development server**
+
    ```bash
    pnpm dev
    # or
@@ -125,17 +134,31 @@
 
 <div align="center">
 
-### Landing Page
-Modern, welcoming interface with quick access to all features
+### 🔐 Sign In Page
+*Modern, secure authentication with Google OAuth and email sign-in*
 
-### AI Health Chat
-Natural conversation with symptom analysis and doctor recommendations
+![Sign In](screenshots/signin.png)
 
-### Doctor Dashboard
-Complete overview of appointments, patients, and quick actions
+---
 
-### Appointment Booking
-Simple 3-step process: Select specialty → Choose doctor → Pick time
+### 🤖 AI Health Assistant
+*Intelligent symptom analysis with chat history and quick-start prompts*
+
+![AI Chat](screenshots/ai-chat.png)
+
+---
+
+### 📅 Book Appointment
+*Easy specialty selection with available doctors count*
+
+![Book Appointment](screenshots/book-appointment.png)
+
+---
+
+### 👨‍⚕️ Doctor Dashboard
+*Complete overview with stats, quick actions, and patient management*
+
+![Doctor Dashboard](screenshots/doctor-dashboard.png)
 
 </div>
 
@@ -177,6 +200,7 @@ smart-health-companion/
 ## 🎯 Key Functionalities
 
 ### For Patients
+
 - 💬 Chat with AI for health guidance
 - 🔍 Find doctors by specialty
 - 📅 Book appointments online
@@ -184,6 +208,7 @@ smart-health-companion/
 - ⭐ Rate and review doctors
 
 ### For Doctors
+
 - 📊 Dashboard with daily overview
 - 📅 Manage appointment schedule
 - 💊 Write digital prescriptions
