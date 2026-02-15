@@ -17,6 +17,14 @@ interface ExtendedSession extends Session {
   }
 }
 
+interface Medication {
+  name: string
+  dosage: string
+  frequency: string
+  duration: string
+  instructions?: string
+}
+
 interface HealthRecord {
   id: string
   title: string
@@ -28,7 +36,7 @@ interface HealthRecord {
   fileSize: string | null
   fileType: string | null
   diagnosis: string | null
-  medications: string[] | null
+  medications: Medication[] | null
   testResults: Record<string, string> | null
   notes: string | null
   recordDate: string
@@ -591,7 +599,7 @@ export default function RecordsPage() {
                   <div>
                     <p className="text-sm text-gray-500 mb-2">Medications</p>
                     <div className="space-y-2">
-                      {selectedRecord.medications.map((med: { name: string; dosage: string; frequency: string; duration: string; instructions?: string }, i: number) => (
+                      {selectedRecord.medications.map((med, i) => (
                         <div key={i} className="p-3 bg-blue-50 rounded-lg">
                           <p className="font-medium text-blue-900">{med.name} - {med.dosage}</p>
                           <p className="text-sm text-blue-700">{med.frequency} for {med.duration}</p>
