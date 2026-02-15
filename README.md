@@ -135,28 +135,32 @@
 <div align="center">
 
 ### 🔐 Sign In Page
-*Modern, secure authentication with Google OAuth and email sign-in*
+
+_Modern, secure authentication with Google OAuth and email sign-in_
 
 ![Sign In](screenshots/signin.png)
 
 ---
 
 ### 🤖 AI Health Assistant
-*Intelligent symptom analysis with chat history and quick-start prompts*
+
+_Intelligent symptom analysis with chat history and quick-start prompts_
 
 ![AI Chat](screenshots/ai-chat.png)
 
 ---
 
 ### 📅 Book Appointment
-*Easy specialty selection with available doctors count*
+
+_Easy specialty selection with available doctors count_
 
 ![Book Appointment](screenshots/book-appointment.png)
 
 ---
 
 ### 👨‍⚕️ Doctor Dashboard
-*Complete overview with stats, quick actions, and patient management*
+
+_Complete overview with stats, quick actions, and patient management_
 
 ![Doctor Dashboard](screenshots/doctor-dashboard.png)
 
