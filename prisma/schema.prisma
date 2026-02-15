@@ -1,0 +1,225 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  role          UserRole  @default(PATIENT)
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  profile       Profile?
+  
+  // Appointments
+  patientAppointments Appointment[] @relation("PatientAppointments")
+  doctorAppointments  Appointment[] @relation("DoctorAppointments")
+  
+  // Health Records
+  patientRecords      HealthRecord[] @relation("PatientRecords")
+  doctorRecords       HealthRecord[] @relation("DoctorRecords")
+  
+  // Chat Sessions
+  chatSessions        ChatSession[]
+  
+  @@index([email])
+}
+
+model Profile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Common fields
+  firstName       String
+  lastName        String
+  phone           String?
+  dateOfBirth     DateTime?
+  gender          String?
+  address         String?
+  city            String?
+  state           String?
+  zipCode         String?
+  country         String?
+  profileImage    String?
+  
+  // Patient-specific fields
+  bloodGroup      String?
+  allergies       String?
+  emergencyContact String?
+  
+  // Doctor-specific fields
+  specialization  String?
+  licenseNumber   String?
+  experience      Int?
+  education       String?
+  bio             String?
+  consultationFee Float?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  
+  patientId     String
+  patient       User              @relation("PatientAppointments", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId      String
+  doctor        User              @relation("DoctorAppointments", fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  date          DateTime
+  time          String
+  reason        String?
+  notes         String?
+  status        AppointmentStatus @default(PENDING)
+  fee           Float
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([date])
+  @@index([status])
+}
+
+// Health Record Types
+enum RecordCategory {
+  LAB_REPORT
+  PRESCRIPTION
+  IMAGING
+  VACCINATION
+  DIAGNOSIS
+  SURGERY
+  CONSULTATION
+  OTHER
+}
+
+enum RecordStatus {
+  NORMAL
+  ABNORMAL
+  CRITICAL
+  PENDING_REVIEW
+  ACTIVE
+  COMPLETED
+  EXPIRED
+}
+
+// Health Records Model
+model HealthRecord {
+  id            String          @id @default(cuid())
+  
+  patientId     String
+  patient       User            @relation("PatientRecords", fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId      String?
+  doctor        User?           @relation("DoctorRecords", fields: [doctorId], references: [id], onDelete: SetNull)
+  
+  title         String
+  description   String?
+  category      RecordCategory
+  status        RecordStatus    @default(PENDING_REVIEW)
+  
+  // File information
+  fileName      String?
+  fileUrl       String?
+  fileSize      Int?            // in bytes
+  fileType      String?         // MIME type
+  
+  // Medical data
+  diagnosis     String?
+  medications   String?         // JSON string of medications
+  testResults   String?         // JSON string of test results
+  notes         String?
+  
+  // Dates
+  recordDate    DateTime        // Date of the medical event
+  expiryDate    DateTime?       // For prescriptions/vaccinations
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([category])
+  @@index([recordDate])
+}
+
+// Chat Session for AI Symptom Checker
+model ChatSession {
+  id            String        @id @default(cuid())
+  
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title         String?       // Auto-generated from first message
+  summary       String?       // AI-generated summary of symptoms
+  
+  suggestedSpecialties String? // JSON array of suggested specialties
+  urgencyLevel  String?       // LOW, MEDIUM, HIGH, EMERGENCY
+  
+  isActive      Boolean       @default(true)
+  
+  messages      ChatMessage[]
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id            String        @id @default(cuid())
+  
+  sessionId     String
+  session       ChatSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  role          String        // "user" or "assistant"
+  content       String
+  
+  // For symptom analysis
+  extractedSymptoms String?   // JSON array of identified symptoms
+  
+  createdAt     DateTime      @default(now())
+  
+  @@index([sessionId])
+}
