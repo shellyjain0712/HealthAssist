@@ -29,7 +29,7 @@ export async function GET() {
       distinct: ["patientId"]
     })
 
-    const patientIds = appointments.map(a => a.patientId)
+    const patientIds = appointments.map((a: { patientId: string }) => a.patientId)
 
     // If no appointments, get all patients (for demo purposes)
     const patients = await prisma.user.findMany({

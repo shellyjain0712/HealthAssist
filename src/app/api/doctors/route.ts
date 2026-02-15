@@ -149,14 +149,16 @@ export async function GET(request: Request) {
       .map((d: any) => d.profile?.specialization)
       .filter((s: any): s is string => !!s);
 
-    const uniqueSpecialties = [...new Set<string>(specializations)].map((spec: string) => ({
-      id: spec.toLowerCase().replace(/\s+/g, "-"),
-      name: spec,
-      icon: specialtyIconMap[spec.toLowerCase()] || "🏥",
-      doctorCount: allDoctors.filter(
-        (d: any) => d.profile?.specialization === spec,
-      ).length,
-    }));
+    const uniqueSpecialties = [...new Set<string>(specializations)].map(
+      (spec: string) => ({
+        id: spec.toLowerCase().replace(/\s+/g, "-"),
+        name: spec,
+        icon: specialtyIconMap[spec.toLowerCase()] || "🏥",
+        doctorCount: allDoctors.filter(
+          (d: any) => d.profile?.specialization === spec,
+        ).length,
+      }),
+    );
 
     return NextResponse.json(
       {
