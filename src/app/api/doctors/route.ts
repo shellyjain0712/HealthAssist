@@ -74,14 +74,14 @@ export async function GET(request: Request) {
     });
 
     console.log(`Found ${doctors.length} doctors`);
-    doctors.forEach((d) => {
+    doctors.forEach((d: any) => {
       console.log(
         `- ${d.email}: role=${d.role}, specialization=${d.profile?.specialization}`
       );
     });
 
     // Transform the data for the frontend
-    const formattedDoctors = doctors.map((doctor) => ({
+    const formattedDoctors = doctors.map((doctor: any) => ({
       id: doctor.id,
       name: `Dr. ${doctor.profile?.firstName || ""} ${
         doctor.profile?.lastName || ""
@@ -147,13 +147,13 @@ export async function GET(request: Request) {
 
     const uniqueSpecialties = [...new Set(
       allDoctors
-        .map(d => d.profile?.specialization)
+        .map((d: any) => d.profile?.specialization)
         .filter((s): s is string => !!s)
-    )].map(spec => ({
+    )].map((spec: string) => ({
       id: spec.toLowerCase().replace(/\s+/g, "-"),
       name: spec,
       icon: specialtyIconMap[spec.toLowerCase()] || "🏥",
-      doctorCount: allDoctors.filter(d => d.profile?.specialization === spec).length,
+      doctorCount: allDoctors.filter((d: any) => d.profile?.specialization === spec).length,
     }));
 
     return NextResponse.json({ 
