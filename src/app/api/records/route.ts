@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Format records for frontend
-    const formattedRecords = records.map((record) => ({
+    const formattedRecords = records.map((record: any) => ({
       id: record.id,
       title: record.title,
       description: record.description,
