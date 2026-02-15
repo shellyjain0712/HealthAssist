@@ -138,7 +138,7 @@
 
 _Modern, secure authentication with Google OAuth and email sign-in_
 
-![Sign In](screenshots/signin.png)
+![Sign In](screenshots/Screenshot%202026-02-15%20193511.png)
 
 ---
 
@@ -146,7 +146,7 @@ _Modern, secure authentication with Google OAuth and email sign-in_
 
 _Intelligent symptom analysis with chat history and quick-start prompts_
 
-![AI Chat](screenshots/ai-chat.png)
+![AI Chat](screenshots/Screenshot%202026-02-15%20193636.png)
 
 ---
 
@@ -154,7 +154,7 @@ _Intelligent symptom analysis with chat history and quick-start prompts_
 
 _Easy specialty selection with available doctors count_
 
-![Book Appointment](screenshots/book-appointment.png)
+![Book Appointment](screenshots/Screenshot%202026-02-15%20193718.png)
 
 ---
 
@@ -162,7 +162,7 @@ _Easy specialty selection with available doctors count_
 
 _Complete overview with stats, quick actions, and patient management_
 
-![Doctor Dashboard](screenshots/doctor-dashboard.png)
+![Doctor Dashboard](screenshots/Screenshot%202026-02-15%20193750.png)
 
 </div>
 
