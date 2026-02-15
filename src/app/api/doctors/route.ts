@@ -148,7 +148,7 @@ export async function GET(request: Request) {
     const uniqueSpecialties = [...new Set(
       allDoctors
         .map((d: any) => d.profile?.specialization)
-        .filter((s): s is string => !!s)
+        .filter((s: any): s is string => !!s)
     )].map((spec: string) => ({
       id: spec.toLowerCase().replace(/\s+/g, "-"),
       name: spec,
