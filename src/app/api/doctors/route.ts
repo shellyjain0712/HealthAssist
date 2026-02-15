@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 
     console.log(
       "Fetching doctors with where clause:",
-      JSON.stringify(where, null, 2)
+      JSON.stringify(where, null, 2),
     );
 
     const doctors = await prisma.user.findMany({
@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     console.log(`Found ${doctors.length} doctors`);
     doctors.forEach((d: any) => {
       console.log(
-        `- ${d.email}: role=${d.role}, specialization=${d.profile?.specialization}`
+        `- ${d.email}: role=${d.role}, specialization=${d.profile?.specialization}`,
       );
     });
 
@@ -108,63 +108,68 @@ export async function GET(request: Request) {
     });
 
     const specialtyIconMap: Record<string, string> = {
-      "cardiology": "❤️",
-      "cardiologist": "❤️",
-      "dermatology": "🩹",
-      "dermatologist": "🩹",
-      "orthopedic": "🦴",
-      "orthopedist": "🦴",
-      "neurology": "🧠",
-      "neurologist": "🧠",
-      "pediatrics": "👶",
-      "pediatrician": "👶",
+      cardiology: "❤️",
+      cardiologist: "❤️",
+      dermatology: "🩹",
+      dermatologist: "🩹",
+      orthopedic: "🦴",
+      orthopedist: "🦴",
+      neurology: "🧠",
+      neurologist: "🧠",
+      pediatrics: "👶",
+      pediatrician: "👶",
       "general physician": "👨‍⚕️",
-      "general": "👨‍⚕️",
+      general: "👨‍⚕️",
       "ent specialist": "👂",
-      "ent": "👂",
-      "ophthalmology": "👁️",
-      "ophthalmologist": "👁️",
-      "gynecology": "🤰",
-      "gynecologist": "🤰",
-      "gynacologist": "🤰",
-      "psychiatry": "🧠",
-      "psychiatrist": "🧠",
-      "dentistry": "🦷",
-      "dentist": "🦷",
-      "pulmonology": "🫁",
-      "pulmonologist": "🫁",
-      "gastroenterology": "🏥",
-      "gastroenterologist": "🏥",
-      "urology": "💊",
-      "urologist": "💊",
-      "oncology": "🎗️",
-      "oncologist": "🎗️",
-      "endocrinology": "💉",
-      "endocrinologist": "💉",
-      "rheumatology": "🦵",
-      "rheumatologist": "🦵",
+      ent: "👂",
+      ophthalmology: "👁️",
+      ophthalmologist: "👁️",
+      gynecology: "🤰",
+      gynecologist: "🤰",
+      gynacologist: "🤰",
+      psychiatry: "🧠",
+      psychiatrist: "🧠",
+      dentistry: "🦷",
+      dentist: "🦷",
+      pulmonology: "🫁",
+      pulmonologist: "🫁",
+      gastroenterology: "🏥",
+      gastroenterologist: "🏥",
+      urology: "💊",
+      urologist: "💊",
+      oncology: "🎗️",
+      oncologist: "🎗️",
+      endocrinology: "💉",
+      endocrinologist: "💉",
+      rheumatology: "🦵",
+      rheumatologist: "🦵",
     };
 
-    const uniqueSpecialties = [...new Set(
-      allDoctors
-        .map((d: any) => d.profile?.specialization)
-        .filter((s: any): s is string => !!s)
-    )].map((spec: string) => ({
+    const specializations = allDoctors
+      .map((d: any) => d.profile?.specialization)
+      .filter((s: any): s is string => !!s);
+    
+    const uniqueSpecialties = [...new Set(specializations)].map((spec) => ({
       id: spec.toLowerCase().replace(/\s+/g, "-"),
       name: spec,
       icon: specialtyIconMap[spec.toLowerCase()] || "🏥",
-      doctorCount: allDoctors.filter((d: any) => d.profile?.specialization === spec).length,
+      doctorCount: allDoctors.filter(
+        (d: any) => d.profile?.specialization === spec,
+      ).length,
     }));
 
-    return NextResponse.json({ 
-      doctors: formattedDoctors,
-      specialties: uniqueSpecialties,
-    }, { status: 200 });
+    return NextResponse.json(
+      {
+        doctors: formattedDoctors,
+        specialties: uniqueSpecialties,
+      },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Error fetching doctors:", error);
     return NextResponse.json(
       { error: "Failed to fetch doctors" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

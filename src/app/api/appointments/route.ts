@@ -64,13 +64,13 @@ export async function GET() {
 
     return NextResponse.json(
       { appointments: formattedAppointments },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("Error fetching appointments:", error);
     return NextResponse.json(
       { error: "Failed to fetch appointments" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     if (!doctorId || !date || !time) {
       return NextResponse.json(
         { error: "Doctor, date, and time are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     if (existingAppointment) {
       return NextResponse.json(
         { error: "This time slot is already booked" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -155,13 +155,13 @@ export async function POST(request: Request) {
           },
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error creating appointment:", error);
     return NextResponse.json(
       { error: "Failed to create appointment" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
