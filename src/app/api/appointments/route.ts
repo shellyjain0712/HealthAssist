@@ -34,7 +34,7 @@ export async function GET() {
       orderBy: { date: "desc" },
     });
 
-    const formattedAppointments = appointments.map((apt) => ({
+    const formattedAppointments = appointments.map((apt: any) => ({
       id: apt.id,
       date: apt.date.toISOString(),
       time: apt.time,
