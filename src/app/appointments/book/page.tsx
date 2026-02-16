@@ -38,18 +38,50 @@ function BookAppointmentContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedDoctorId = searchParams.get("doctor")
+  const preselectedSpecialty = searchParams.get("specialty")
+  const urgencyLevel = searchParams.get("urgency")
+  const symptomsContext = searchParams.get("symptoms")
+  const aiContext = searchParams.get("context")
 
-  const [step, setStep] = useState(preselectedDoctorId ? 2 : 1)
-  const [selectedSpecialty, setSelectedSpecialty] = useState("")
+  const [step, setStep] = useState(preselectedDoctorId ? 2 : preselectedSpecialty ? 2 : 1)
+  const [selectedSpecialty, setSelectedSpecialty] = useState(preselectedSpecialty || "")
   const [selectedDoctor, setSelectedDoctor] = useState(preselectedDoctorId || "")
   const [selectedDate, setSelectedDate] = useState("")
   const [selectedTime, setSelectedTime] = useState("")
-  const [reason, setReason] = useState("")
+  const [reason, setReason] = useState(symptomsContext || "")
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [specialties, setSpecialties] = useState<Specialty[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingSpecialties, setLoadingSpecialties] = useState(true)
   const [booking, setBooking] = useState(false)
+  const [previousRecords, setPreviousRecords] = useState<any[]>([])
+  const [previousPrescriptions, setPreviousPrescriptions] = useState<any[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
+  // Fetch patient history (records & prescriptions)
+  const fetchPatientHistory = useCallback(async () => {
+    try {
+      setLoadingHistory(true)
+      const [recordsRes, prescriptionsRes] = await Promise.all([
+        fetch("/api/records"),
+        fetch("/api/prescriptions"),
+      ])
+
+      const recordsData = await recordsRes.json()
+      const prescriptionsData = await prescriptionsRes.json()
+
+      if (recordsRes.ok) {
+        setPreviousRecords(recordsData.records || [])
+      }
+      if (prescriptionsRes.ok) {
+        setPreviousPrescriptions(prescriptionsData.prescriptions || [])
+      }
+    } catch (err) {
+      console.error("Failed to fetch patient history:", err)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }, [])
 
   // Fetch specialties on mount
   const fetchSpecialties = useCallback(async () => {
@@ -92,7 +124,24 @@ function BookAppointmentContent() {
   // Fetch specialties on component mount
   useEffect(() => {
     fetchSpecialties()
-  }, [fetchSpecialties])
+    fetchPatientHistory()
+  }, [fetchSpecialties, fetchPatientHistory])
+
+  // Auto-select specialty if provided via URL
+  useEffect(() => {
+    if (preselectedSpecialty && specialties.length > 0) {
+      const matchingSpecialty = specialties.find(
+        s => s.name.toLowerCase().includes(preselectedSpecialty.toLowerCase())
+      )
+      if (matchingSpecialty) {
+        setSelectedSpecialty(matchingSpecialty.id)
+        fetchDoctors(matchingSpecialty.id)
+      } else {
+        // If no exact match, still try to fetch doctors by the specialty name
+        fetchDoctors(preselectedSpecialty)
+      }
+    }
+  }, [preselectedSpecialty, specialties, fetchDoctors])
 
   // Fetch all doctors on mount if there's a preselected doctor
   useEffect(() => {
@@ -109,14 +158,15 @@ function BookAppointmentContent() {
 
   // Default specialties to show when no doctors are registered yet
   const defaultSpecialties = [
+    { id: "cardiologist", name: "Cardiologist", icon: "❤️", doctorCount: 0 },
+    { id: "gynecologist", name: "Gynecologist", icon: "🤰", doctorCount: 0 },
+    { id: "pediatric", name: "Pediatric", icon: "👶", doctorCount: 0 },
     { id: "dermatology", name: "Dermatology", icon: "🩹", doctorCount: 0 },
     { id: "orthopedic", name: "Orthopedic", icon: "🦴", doctorCount: 0 },
     { id: "neurology", name: "Neurology", icon: "🧠", doctorCount: 0 },
-    { id: "pediatrics", name: "Pediatrics", icon: "👶", doctorCount: 0 },
     { id: "general-physician", name: "General Physician", icon: "👨‍⚕️", doctorCount: 0 },
     { id: "ent-specialist", name: "ENT Specialist", icon: "👂", doctorCount: 0 },
     { id: "ophthalmology", name: "Ophthalmology", icon: "👁️", doctorCount: 0 },
-    { id: "gynecology", name: "Gynecology", icon: "🩺", doctorCount: 0 },
   ]
 
   // Merge dynamic specialties with defaults (dynamic ones first, then defaults that don't exist)
@@ -368,14 +418,80 @@ function BookAppointmentContent() {
                 <CardDescription>Briefly describe your symptoms or reason for appointment</CardDescription>
               </CardHeader>
               <CardContent>
+                {urgencyLevel && (
+                  <div className={`mb-4 p-3 rounded-lg border-2 flex items-center gap-3 ${
+                    urgencyLevel === "EMERGENCY"
+                      ? "bg-red-50 border-red-300 text-red-900"
+                      : urgencyLevel === "HIGH"
+                      ? "bg-orange-50 border-orange-300 text-orange-900"
+                      : "bg-amber-50 border-amber-300 text-amber-900"
+                  }`}>
+                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="font-semibold text-sm">Urgency Level: {urgencyLevel}</p>
+                      <p className="text-xs opacity-80">Priority booking recommended based on AI assessment</p>
+                    </div>
+                  </div>
+                )}
                 <Textarea
                   placeholder="e.g., Regular checkup, chest pain, follow-up appointment..."
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={4}
                 />
+                {aiContext && (
+                  <div className="mt-3 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+                    <p className="text-xs font-semibold text-teal-900 mb-1">AI Recommendation Context:</p>
+                    <p className="text-xs text-teal-800">{aiContext.slice(0, 200)}...</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* Previous Records & Prescriptions */}
+            {(previousRecords.length > 0 || previousPrescriptions.length > 0) && (
+              <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm mt-6">
+                <CardHeader>
+                  <CardTitle className="text-lg">Your Medical History</CardTitle>
+                  <CardDescription>Recent records and prescriptions (will be shared with doctor)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {previousRecords.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-2">Recent Medical Records ({previousRecords.length})</p>
+                      <div className="space-y-2">
+                        {previousRecords.slice(0, 3).map((record: any) => (
+                          <div key={record.id} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-sm font-medium text-blue-900">{record.title}</p>
+                            <p className="text-xs text-blue-700 mt-1">{new Date(record.uploadedAt).toLocaleDateString()}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {previousPrescriptions.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-2">Recent Prescriptions ({previousPrescriptions.length})</p>
+                      <div className="space-y-2">
+                        {previousPrescriptions.slice(0, 3).map((prescription: any) => (
+                          <div key={prescription.id} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                            <p className="text-sm font-medium text-purple-900">
+                              {prescription.medications?.[0]?.name || "Prescription"}
+                              {prescription.medications?.length > 1 && ` + ${prescription.medications.length - 1} more`}
+                            </p>
+                            <p className="text-xs text-purple-700 mt-1">
+                              Dr. {prescription.doctor?.name} • {new Date(prescription.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             <div className="flex gap-4 mt-6">
               <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
@@ -468,15 +584,38 @@ function BookAppointmentContent() {
                 onClick={async () => {
                   try {
                     setBooking(true)
+                    
+                    // Prepare comprehensive appointment data
+                    const appointmentData: any = {
+                      doctorId: selectedDoctor,
+                      date: selectedDate,
+                      time: selectedTime,
+                      reason: reason,
+                    }
+
+                    // Add urgency level if present
+                    if (urgencyLevel) {
+                      appointmentData.urgency = urgencyLevel
+                    }
+
+                    // Add AI context if present
+                    if (aiContext) {
+                      appointmentData.aiContext = aiContext
+                    }
+
+                    // Add patient history references
+                    if (previousRecords.length > 0) {
+                      appointmentData.relevantRecords = previousRecords.slice(0, 5).map((r: any) => r.id)
+                    }
+                    
+                    if (previousPrescriptions.length > 0) {
+                      appointmentData.relevantPrescriptions = previousPrescriptions.slice(0, 5).map((p: any) => p.id)
+                    }
+
                     const response = await fetch("/api/appointments", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        doctorId: selectedDoctor,
-                        date: selectedDate,
-                        time: selectedTime,
-                        reason: reason,
-                      }),
+                      body: JSON.stringify(appointmentData),
                     })
 
                     const data = await response.json()

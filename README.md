@@ -20,10 +20,13 @@
 
 ### 🤖 AI Health Assistant
 
-- **Intelligent Symptom Analysis** - Describe your symptoms and get instant guidance
+- **Real AI-Powered Conversations** - Powered by Google Gemini 1.5 Flash (not predefined responses!)
+- **Conversation Continuity** - Full context awareness across the entire chat session
+- **Intelligent Symptom Analysis** - Describe your symptoms and get instant, personalized guidance
 - **Specialist Recommendations** - AI suggests the right type of doctor for your condition
-- **Empathetic Responses** - Natural conversation with helpful health advice
-- **Emergency Detection** - Identifies urgent symptoms requiring immediate care
+- **Empathetic Responses** - Natural, caring conversation with helpful health advice
+- **Emergency Detection** - Automatically identifies urgent symptoms requiring immediate care
+- **Follow-up Questions** - Asks clarifying questions to better understand your condition
 
 ### 👨‍⚕️ Doctor Portal
 
@@ -52,14 +55,14 @@
 
 ## 🛠 Tech Stack
 
-| Category     | Technologies                                   |
-| ------------ | ---------------------------------------------- |
-| **Frontend** | Next.js 15, React 18, TypeScript, Tailwind CSS |
-| **Backend**  | Next.js API Routes, NextAuth.js                |
-| **Database** | PostgreSQL with Prisma ORM                     |
-| **AI**       | Google Gemini API                              |
-| **Styling**  | Tailwind CSS, Radix UI Components              |
-| **Email**    | Nodemailer                                     |
+| Category     | Technologies                                      |
+| ------------ | ------------------------------------------------- |
+| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS    |
+| **Backend**  | Next.js API Routes, NextAuth.js                   |
+| **Database** | PostgreSQL with Prisma ORM                        |
+| **AI**       | Google Gemini 1.5 Flash (Free tier, 15 RPM)       |
+| **Styling**  | Tailwind CSS, Radix UI Components                 |
+| **Email**    | Nodemailer                                        |
 
 ---
 
@@ -90,7 +93,13 @@
 
 3. **Set up environment variables**
 
-   Create a `.env` file in the root directory:
+   Copy the example file and configure:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Edit `.env.local` with your values:
 
    ```env
    # Database
@@ -100,16 +109,18 @@
    NEXTAUTH_SECRET="your-secret-key"
    NEXTAUTH_URL="http://localhost:3000"
 
-   # Google Gemini AI
-   GOOGLE_GEMINI_API_KEY="your-gemini-api-key"
+   # Google Gemini AI (Get free key from: https://aistudio.google.com/app/apikey)
+   GEMINI_API_KEY="your-gemini-api-key"
 
-   # Email (Optional)
-   EMAIL_SERVER_HOST="smtp.gmail.com"
-   EMAIL_SERVER_PORT=587
-   EMAIL_SERVER_USER="your-email@gmail.com"
-   EMAIL_SERVER_PASSWORD="your-app-password"
+   # Email (Optional - for password reset)
+   EMAIL_HOST="smtp.gmail.com"
+   EMAIL_PORT=587
+   EMAIL_USER="your-email@gmail.com"
+   EMAIL_PASSWORD="your-app-password"
    EMAIL_FROM="noreply@healthassist.com"
    ```
+
+   📖 **Need help setting up the AI chatbot?** See [SETUP.md](SETUP.md) for detailed instructions!
 
 4. **Set up the database**
 
