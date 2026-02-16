@@ -119,29 +119,27 @@ export default function DoctorsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <button onClick={() => router.push("/dashboard")} className="p-2 hover:bg-gray-100 rounded-lg">
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-gray-800">Find Doctors</span>
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push("/dashboard")} className="p-2 hover:bg-gray-100 rounded-lg">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="w-9 h-9 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
             </div>
+            <span className="font-bold text-gray-800 text-lg">Find Doctors</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {/* Search & Filters */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="relative mb-4">
             <svg className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -151,16 +149,16 @@ export default function DoctorsPage() {
               placeholder="Search doctors by name or specialty..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 py-6 text-lg bg-white shadow-lg border-0"
+              className="pl-12 py-5 bg-white shadow-sm border"
             />
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-2">
             <button
               onClick={() => setSelectedSpecialty("all")}
-              className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all ${selectedSpecialty === "all"
-                ? "bg-emerald-600 text-white shadow-lg"
-                : "bg-white text-gray-600 hover:bg-gray-50 shadow"
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${selectedSpecialty === "all"
+                ? "bg-emerald-600 text-white shadow-md"
+                : "bg-white text-gray-600 hover:bg-gray-50 shadow-sm"
                 }`}
             >
               All Specialties
@@ -169,9 +167,9 @@ export default function DoctorsPage() {
               <button
                 key={specialty.id}
                 onClick={() => setSelectedSpecialty(specialty.name)}
-                className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all flex items-center gap-2 ${selectedSpecialty === specialty.name
-                  ? "bg-emerald-600 text-white shadow-lg"
-                  : "bg-white text-gray-600 hover:bg-gray-50 shadow"
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${selectedSpecialty === specialty.name
+                  ? "bg-emerald-600 text-white shadow-md"
+                  : "bg-white text-gray-600 hover:bg-gray-50 shadow-sm"
                   }`}
               >
                 <span>{specialty.icon}</span>
@@ -186,7 +184,7 @@ export default function DoctorsPage() {
 
         {/* Error State */}
         {error && (
-          <Card className="border-0 shadow-lg bg-red-50 mb-6">
+          <Card className="border bg-red-50 shadow-sm mb-6">
             <CardContent className="p-4">
               <p className="text-red-600">{error}</p>
               <Button variant="outline" size="sm" onClick={fetchDoctors} className="mt-2">
@@ -197,14 +195,14 @@ export default function DoctorsPage() {
         )}
 
         {/* Results Count */}
-        <p className="text-gray-600 mb-4">
+        <p className="text-sm text-gray-600 mb-4">
           {loading ? "Searching..." : `${doctors.length} doctor${doctors.length !== 1 ? "s" : ""} found`}
         </p>
 
         {/* Doctors Grid */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-4">
           {doctors.map((doctor) => (
-            <Card key={doctor.id} className="border-0 shadow-lg bg-white/70 backdrop-blur-sm hover:shadow-xl transition-all overflow-hidden">
+            <Card key={doctor.id} className="border bg-white shadow-sm hover:shadow-md transition-all overflow-hidden">
               <CardContent className="p-0">
                 <div className="p-6">
                   <div className="flex items-start gap-4">
@@ -269,7 +267,7 @@ export default function DoctorsPage() {
         </div>
 
         {!loading && doctors.length === 0 && (
-          <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+          <Card className="border bg-white shadow-sm">
             <CardContent className="p-12 text-center">
               <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
