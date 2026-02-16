@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 
@@ -16,12 +16,10 @@ interface Appointment {
   time: string
   reason: string | null
   status: string
-  fee: number
   doctor: {
     id: string
     name: string
     specialty: string
-    hospital: string | null
   }
 }
 
@@ -31,57 +29,35 @@ interface HealthRecord {
   category: string
   status: string
   recordDate: string
-  doctor: {
-    name: string
-    specialty: string
-  } | null
 }
 
 export default function PatientDashboard({ profile, onSignOut }: PatientDashboardProps) {
   const router = useRouter()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [records, setRecords] = useState<HealthRecord[]>([])
-  const [loadingAppointments, setLoadingAppointments] = useState(true)
-  const [loadingRecords, setLoadingRecords] = useState(true)
+  const [loading, setLoading] = useState(true)
 
-  // Fetch appointments from API
-  const fetchAppointments = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      setLoadingAppointments(true)
-      const response = await fetch("/api/appointments")
-      const data = await response.json()
-      if (response.ok) {
-        setAppointments(data.appointments || [])
-      }
+      const [aptRes, recRes] = await Promise.all([
+        fetch("/api/appointments"),
+        fetch("/api/records")
+      ])
+      const aptData = await aptRes.json()
+      const recData = await recRes.json()
+      if (aptRes.ok) setAppointments(aptData.appointments || [])
+      if (recRes.ok) setRecords(recData.records || [])
     } catch (error) {
-      console.error("Failed to fetch appointments:", error)
+      console.error("Failed to fetch data:", error)
     } finally {
-      setLoadingAppointments(false)
-    }
-  }, [])
-
-  // Fetch health records from API
-  const fetchRecords = useCallback(async () => {
-    try {
-      setLoadingRecords(true)
-      const response = await fetch("/api/records")
-      const data = await response.json()
-      if (response.ok) {
-        setRecords(data.records || [])
-      }
-    } catch (error) {
-      console.error("Failed to fetch records:", error)
-    } finally {
-      setLoadingRecords(false)
+      setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchAppointments()
-    fetchRecords()
-  }, [fetchAppointments, fetchRecords])
+    fetchData()
+  }, [fetchData])
 
-  // Calculate stats from real data
   const upcomingAppointments = appointments.filter(apt => {
     const aptDate = new Date(apt.date)
     const today = new Date()
@@ -89,333 +65,178 @@ export default function PatientDashboard({ profile, onSignOut }: PatientDashboar
     return aptDate >= today && apt.status !== "cancelled"
   }).slice(0, 3)
 
-  const appointmentStats = {
-    total: appointments.length,
-    completed: appointments.filter(apt => apt.status === "completed").length,
-    upcoming: appointments.filter(apt => {
-      const aptDate = new Date(apt.date)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      return aptDate >= today && apt.status !== "cancelled"
-    }).length,
-    cancelled: appointments.filter(apt => apt.status === "cancelled").length,
-  }
-
-  const recordStats = {
-    total: records.length,
-    labReports: records.filter(r => r.category === "LAB_REPORT" || r.category === "labreport").length,
-    prescriptions: records.filter(r => r.category === "PRESCRIPTION" || r.category === "prescription").length,
-    imaging: records.filter(r => r.category === "IMAGING" || r.category === "imaging").length,
-  }
-
-  // Health score based on recent appointments and records
-  const healthScore = Math.min(100, Math.max(60, 85 + (appointmentStats.completed * 2) - (appointmentStats.cancelled * 5)))
-
-  const quickActions = [
-    {
-      title: "AI Symptom Checker",
-      description: "Get AI-powered health insights",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
-      ),
-      color: "from-pink-500 to-rose-600",
-      bgLight: "bg-pink-50",
-      href: "/chat",
-    },
-    {
-      title: "Book Appointment",
-      description: "Schedule a visit with a doctor",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      ),
-      color: "from-blue-500 to-blue-600",
-      bgLight: "bg-blue-50",
-      href: "/appointments/book",
-    },
-    {
-      title: "My Records",
-      description: "View your medical history",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      color: "from-emerald-500 to-emerald-600",
-      bgLight: "bg-emerald-50",
-      href: "/records",
-    },
-    {
-      title: "Test Reports",
-      description: "Upload & view test results",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-        </svg>
-      ),
-      color: "from-cyan-500 to-cyan-600",
-      bgLight: "bg-cyan-50",
-      href: "/lab-results",
-    },
-    {
-      title: "Find Doctors",
-      description: "Browse available specialists",
-      icon: (
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-      ),
-      color: "from-purple-500 to-purple-600",
-      bgLight: "bg-purple-50",
-      href: "/doctors",
-    },
-  ]
-
-  // Dynamic health metrics based on records
-  const healthMetrics = [
-    { label: "Total Records", value: recordStats.total.toString(), unit: "", status: "info", icon: "📋" },
-    { label: "Test Reports", value: recordStats.labReports.toString(), unit: "", status: "normal", icon: "🧪" },
-    { label: "Prescriptions", value: recordStats.prescriptions.toString(), unit: "", status: "normal", icon: "💊" },
-    { label: "Appointments", value: appointmentStats.total.toString(), unit: "", status: "normal", icon: "📅" },
-  ]
-
-  // Sample health trends data for visualization (in a real app, this would come from health records/measurements)
-  const healthTrends = [
-    { month: "Jul", bp: 118, hr: 72, sugar: 95 },
-    { month: "Aug", bp: 120, hr: 74, sugar: 98 },
-    { month: "Sep", bp: 117, hr: 71, sugar: 94 },
-    { month: "Oct", bp: 122, hr: 75, sugar: 100 },
-    { month: "Nov", bp: 119, hr: 73, sugar: 96 },
-    { month: "Dec", bp: 121, hr: 72, sugar: 97 },
-  ]
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-IN", {
       month: "short",
       day: "numeric",
-      year: "numeric",
     })
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-gray-800">Smart Health</span>
+      <header className="bg-white border-b sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
             </div>
+            <span className="font-semibold text-gray-800">Smart Health</span>
+          </div>
 
-            <nav className="hidden md:flex items-center gap-6">
-              <a href="/dashboard" className="text-emerald-600 font-medium">Dashboard</a>
-              <a href="/appointments" className="text-gray-600 hover:text-gray-900">Appointments</a>
-              <a href="/records" className="text-gray-600 hover:text-gray-900">Records</a>
-              <a href="/doctors" className="text-gray-600 hover:text-gray-900">Doctors</a>
-            </nav>
+          <nav className="hidden md:flex items-center gap-4 text-sm">
+            <a href="/dashboard" className="text-emerald-600 font-medium">Dashboard</a>
+            <a href="/appointments" className="text-gray-600 hover:text-gray-900">Appointments</a>
+            <a href="/records" className="text-gray-600 hover:text-gray-900">Records</a>
+            <a href="/doctors" className="text-gray-600 hover:text-gray-900">Doctors</a>
+          </nav>
 
-            <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  {profile?.profile?.firstName?.[0]}{profile?.profile?.lastName?.[0]}
-                </div>
-                <div className="hidden sm:block">
-                  <p className="text-sm font-medium text-gray-900">{profile?.profile?.firstName} {profile?.profile?.lastName}</p>
-                  <p className="text-xs text-gray-500">Patient</p>
-                </div>
-              </div>
-
-              <Button variant="outline" size="sm" onClick={onSignOut}>
-                Sign Out
-              </Button>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium text-gray-700">
+              {profile?.profile?.firstName?.[0]}{profile?.profile?.lastName?.[0]}
             </div>
+            <Button variant="ghost" size="sm" onClick={onSignOut} className="text-sm">
+              Sign Out
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {profile?.profile?.firstName || "Patient"}! 👋
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Welcome */}
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold text-gray-900">
+            Welcome, {profile?.profile?.firstName || "Patient"}
           </h1>
-          <p className="text-gray-600 mt-1">Here&apos;s your health overview for today</p>
+          <p className="text-sm text-gray-500">Your health overview</p>
         </div>
 
-        {/* Health Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {healthMetrics.map((metric, index) => (
-            <Card key={index} className="border-0 shadow-lg bg-white/70 backdrop-blur-sm hover:shadow-xl transition-all hover:-translate-y-1">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-2xl">{metric.icon}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${metric.status === "info" ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700"
-                    }`}>
-                    {metric.status === "info" ? "Info" : "Active"}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500">{metric.label}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {metric.value} <span className="text-sm font-normal text-gray-500">{metric.unit}</span>
-                </p>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <Card className="border">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Appointments</p>
+              <p className="text-2xl font-semibold">{appointments.length}</p>
+            </CardContent>
+          </Card>
+          <Card className="border">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Upcoming</p>
+              <p className="text-2xl font-semibold">{upcomingAppointments.length}</p>
+            </CardContent>
+          </Card>
+          <Card className="border">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Records</p>
+              <p className="text-2xl font-semibold">{records.length}</p>
+            </CardContent>
+          </Card>
+          <Card className="border">
+            <CardContent className="p-4">
+              <p className="text-xs text-gray-500">Completed</p>
+              <p className="text-2xl font-semibold">{appointments.filter(a => a.status === "completed").length}</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {quickActions.map((action, index) => (
-              <button
-                key={index}
-                onClick={() => router.push(action.href)}
-                className="group p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-left border-0"
-              >
-                <div className={`w-12 h-12 bg-gradient-to-br ${action.color} rounded-xl flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform`}>
-                  {action.icon}
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{action.title}</h3>
-                <p className="text-sm text-gray-500">{action.description}</p>
-              </button>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {[
+            { title: "AI Chat", href: "/chat", icon: "M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" },
+            { title: "Book Appointment", href: "/appointments/book", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+            { title: "My Records", href: "/records", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+            { title: "Find Doctors", href: "/doctors", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" },
+          ].map((action) => (
+            <button
+              key={action.title}
+              onClick={() => router.push(action.href)}
+              className="p-4 bg-white border rounded-lg text-left hover:bg-gray-50 transition-colors"
+            >
+              <svg className="w-5 h-5 text-emerald-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={action.icon} />
+              </svg>
+              <p className="text-sm font-medium text-gray-900">{action.title}</p>
+            </button>
+          ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-4">
           {/* Upcoming Appointments */}
-          <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-            <CardHeader>
+          <Card className="border">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Upcoming Appointments</CardTitle>
-                <Button variant="ghost" size="sm" className="text-emerald-600" onClick={() => router.push("/appointments")}>View All</Button>
+                <CardTitle className="text-base">Upcoming</CardTitle>
+                <Button variant="ghost" size="sm" className="text-xs text-emerald-600" onClick={() => router.push("/appointments")}>
+                  View All
+                </Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {loadingAppointments ? (
-                <div className="text-center py-8 text-gray-500">Loading appointments...</div>
+            <CardContent className="space-y-2">
+              {loading ? (
+                <p className="text-sm text-gray-500 py-4 text-center">Loading...</p>
               ) : upcomingAppointments.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 bg-gray-100 rounded-full mx-auto mb-3 flex items-center justify-center">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <p className="text-gray-500 text-sm">No upcoming appointments</p>
-                </div>
+                <p className="text-sm text-gray-500 py-4 text-center">No upcoming appointments</p>
               ) : (
                 upcomingAppointments.map((apt) => (
-                  <div key={apt.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-                    <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold">
-                      {apt.doctor.name.split(" ").pop()?.[0] || "D"}
+                  <div key={apt.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-9 h-9 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-sm font-medium">
+                      {apt.doctor.name.split(" ").pop()?.[0]}
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{apt.doctor.name}</p>
-                      <p className="text-sm text-gray-500">{apt.doctor.specialty}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{apt.doctor.name}</p>
+                      <p className="text-xs text-gray-500">{apt.doctor.specialty}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">{formatDate(apt.date)}</p>
+                      <p className="text-xs font-medium">{formatDate(apt.date)}</p>
                       <p className="text-xs text-gray-500">{apt.time}</p>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${apt.status === "confirmed"
-                      ? "bg-emerald-100 text-emerald-700"
-                      : apt.status === "pending"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-blue-100 text-blue-700"
-                      }`}>
-                      {apt.status}
-                    </span>
                   </div>
                 ))
               )}
-
-              <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700" onClick={() => router.push("/appointments/book")}>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Book New Appointment
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-sm h-9" onClick={() => router.push("/appointments/book")}>
+                Book Appointment
               </Button>
             </CardContent>
           </Card>
 
-          {/* Profile Card */}
-          <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Your Profile</CardTitle>
-              <CardDescription>Personal and medical information</CardDescription>
+          {/* Profile */}
+          <Card className="border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Profile</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-2xl font-bold">
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg">
+                <div className="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center text-lg font-medium">
                   {profile?.profile?.firstName?.[0]}{profile?.profile?.lastName?.[0]}
                 </div>
                 <div>
-                  <p className="font-semibold text-lg">{profile?.profile?.firstName} {profile?.profile?.lastName}</p>
-                  <p className="text-blue-100">{profile?.email}</p>
+                  <p className="font-medium">{profile?.profile?.firstName} {profile?.profile?.lastName}</p>
+                  <p className="text-sm text-gray-500">{profile?.email}</p>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Blood Group</p>
-                  <p className="font-semibold text-gray-900">{profile?.profile?.bloodGroup || "Not set"}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Blood Group</p>
+                  <p className="text-sm font-medium">{profile?.profile?.bloodGroup || "-"}</p>
                 </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Phone</p>
-                  <p className="font-semibold text-gray-900">{profile?.profile?.phone || "Not set"}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Gender</p>
-                  <p className="font-semibold text-gray-900">{profile?.profile?.gender || "Not set"}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Emergency Contact</p>
-                  <p className="font-semibold text-gray-900">{profile?.profile?.emergencyContact || "Not set"}</p>
+                <div className="p-2 bg-gray-50 rounded">
+                  <p className="text-xs text-gray-500">Phone</p>
+                  <p className="text-sm font-medium">{profile?.profile?.phone || "-"}</p>
                 </div>
               </div>
-
-              <Button variant="outline" className="w-full" onClick={() => router.push("/profile")}>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
+              <Button variant="outline" className="w-full h-9 text-sm" onClick={() => router.push("/profile")}>
                 Edit Profile
               </Button>
             </CardContent>
           </Card>
         </div>
+      </main>
+    </div>
+  )
+}
 
-        {/* Analytics & Reports Section */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Analytics & Reports</h2>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Health Score */}
-            <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Health Score</CardTitle>
-                <CardDescription>Based on your recent vitals</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center py-4">
-                  <div className="relative w-32 h-32">
-                    <svg className="w-32 h-32 transform -rotate-90">
-                      <circle
                         cx="64"
                         cy="64"
                         r="56"
