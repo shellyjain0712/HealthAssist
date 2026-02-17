@@ -34,7 +34,7 @@ interface Specialty {
 }
 
 function BookAppointmentContent() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const preselectedDoctorId = searchParams.get("doctor")
@@ -56,12 +56,10 @@ function BookAppointmentContent() {
   const [booking, setBooking] = useState(false)
   const [previousRecords, setPreviousRecords] = useState<any[]>([])
   const [previousPrescriptions, setPreviousPrescriptions] = useState<any[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
 
   // Fetch patient history (records & prescriptions)
   const fetchPatientHistory = useCallback(async () => {
     try {
-      setLoadingHistory(true)
       const [recordsRes, prescriptionsRes] = await Promise.all([
         fetch("/api/records"),
         fetch("/api/prescriptions"),
@@ -419,13 +417,12 @@ function BookAppointmentContent() {
               </CardHeader>
               <CardContent>
                 {urgencyLevel && (
-                  <div className={`mb-4 p-3 rounded-lg border-2 flex items-center gap-3 ${
-                    urgencyLevel === "EMERGENCY"
+                  <div className={`mb-4 p-3 rounded-lg border-2 flex items-center gap-3 ${urgencyLevel === "EMERGENCY"
                       ? "bg-red-50 border-red-300 text-red-900"
                       : urgencyLevel === "HIGH"
-                      ? "bg-orange-50 border-orange-300 text-orange-900"
-                      : "bg-amber-50 border-amber-300 text-amber-900"
-                  }`}>
+                        ? "bg-orange-50 border-orange-300 text-orange-900"
+                        : "bg-amber-50 border-amber-300 text-amber-900"
+                    }`}>
                     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
@@ -584,7 +581,7 @@ function BookAppointmentContent() {
                 onClick={async () => {
                   try {
                     setBooking(true)
-                    
+
                     // Prepare comprehensive appointment data
                     const appointmentData: any = {
                       doctorId: selectedDoctor,
@@ -607,7 +604,7 @@ function BookAppointmentContent() {
                     if (previousRecords.length > 0) {
                       appointmentData.relevantRecords = previousRecords.slice(0, 5).map((r: any) => r.id)
                     }
-                    
+
                     if (previousPrescriptions.length > 0) {
                       appointmentData.relevantPrescriptions = previousPrescriptions.slice(0, 5).map((p: any) => p.id)
                     }

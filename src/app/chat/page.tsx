@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -204,16 +203,6 @@ export default function ChatbotPage() {
     }
   }
 
-  const getUrgencyColor = (urgency: string) => {
-    const colors: Record<string, string> = {
-      LOW: "bg-green-50 text-green-700 border-green-200",
-      MEDIUM: "bg-amber-50 text-amber-700 border-amber-200",
-      HIGH: "bg-orange-50 text-orange-700 border-orange-200",
-      EMERGENCY: "bg-red-50 text-red-700 border-red-200",
-    }
-    return colors[urgency] || "bg-gray-50 text-gray-700 border-gray-200"
-  }
-
   const quickSymptoms = [
     { text: "I have a headache", icon: "🤕" },
     { text: "Feeling feverish", icon: "🤒" },
@@ -336,7 +325,7 @@ export default function ChatbotPage() {
                     </svg>
                   </div>
                   <h1 className="text-4xl font-bold text-gray-900 tracking-tight">How can I help you today?</h1>
-                  <p className="text-gray-600 text-lg max-w-xl mx-auto leading-relaxed">I'm your AI health assistant. Tell me about your symptoms and I'll help you understand them better.</p>
+                  <p className="text-gray-600 text-lg max-w-xl mx-auto leading-relaxed">I&apos;m your AI health assistant. Tell me about your symptoms and I&apos;ll help you understand them better.</p>
                 </div>
 
                 {/* Quick Symptoms Grid */}
@@ -392,7 +381,7 @@ export default function ChatbotPage() {
                   <div className="max-w-3xl mx-auto px-4 py-6">
                     <div className="flex gap-4 items-start">
                       {message.role === "assistant" ? <AIAvatar /> : <UserAvatar />}
-                      
+
                       <div className="flex-1 space-y-2 overflow-hidden">
                         {message.role === "assistant" ? (
                           <div className="markdown-content">
@@ -409,7 +398,7 @@ export default function ChatbotPage() {
                           // More flexible urgency detection
                           let urgency: string | null = null;
                           const content = message.content.toUpperCase();
-                          
+
                           if (content.includes('EMERGENCY')) {
                             urgency = 'EMERGENCY';
                           } else if (content.includes('HIGH URGENCY') || content.includes('HIGH PRIORITY')) {
@@ -417,11 +406,11 @@ export default function ChatbotPage() {
                           } else if (content.includes('MEDIUM URGENCY') || content.includes('MEDIUM PRIORITY')) {
                             urgency = 'MEDIUM';
                           }
-                          
+
                           if (urgency === "MEDIUM" || urgency === "HIGH" || urgency === "EMERGENCY") {
                             // Extract specialist from message - prioritize by medical context
                             let specialist = "doctor";
-                            
+
                             // Pregnancy/gynecological issues -> Gynecologist
                             if (/pregnan(t|cy)|prenatal|birth|labor|contraction|gynecolog|obstetric|miscarriage|bleeding.*pregnan/i.test(message.content)) {
                               specialist = "gynecologist";
@@ -433,23 +422,21 @@ export default function ChatbotPage() {
                               const specialistMatch = message.content.match(/(gynecologist|cardiologist|neurologist|dermatologist|orthopedist|pediatrician|psychiatrist|general physician|ent specialist|pulmonologist|gastroenterologist|endocrinologist|rheumatologist|urologist|ophthalmologist)/i);
                               specialist = specialistMatch?.[1] || "emergency medicine";
                             }
-                            
+
                             return (
-                              <div className={`mt-6 p-4 rounded-xl border-2 ${
-                                urgency === "EMERGENCY" 
-                                  ? "bg-red-50 border-red-300" 
+                              <div className={`mt-6 p-4 rounded-xl border-2 ${urgency === "EMERGENCY"
+                                  ? "bg-red-50 border-red-300"
                                   : urgency === "HIGH"
-                                  ? "bg-orange-50 border-orange-300"
-                                  : "bg-amber-50 border-amber-300"
-                              }`}>
+                                    ? "bg-orange-50 border-orange-300"
+                                    : "bg-amber-50 border-amber-300"
+                                }`}>
                                 <div className="flex items-start gap-4">
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                                    urgency === "EMERGENCY"
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${urgency === "EMERGENCY"
                                       ? "bg-red-100"
                                       : urgency === "HIGH"
-                                      ? "bg-orange-100"
-                                      : "bg-amber-100"
-                                  }`}>
+                                        ? "bg-orange-100"
+                                        : "bg-amber-100"
+                                    }`}>
                                     {urgency === "EMERGENCY" ? (
                                       <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -461,18 +448,17 @@ export default function ChatbotPage() {
                                     )}
                                   </div>
                                   <div className="flex-1">
-                                    <p className={`text-sm font-semibold mb-2 ${
-                                      urgency === "EMERGENCY"
+                                    <p className={`text-sm font-semibold mb-2 ${urgency === "EMERGENCY"
                                         ? "text-red-900"
                                         : urgency === "HIGH"
-                                        ? "text-orange-900"
-                                        : "text-amber-900"
-                                    }`}>
-                                      {urgency === "EMERGENCY" 
+                                          ? "text-orange-900"
+                                          : "text-amber-900"
+                                      }`}>
+                                      {urgency === "EMERGENCY"
                                         ? "🚨 CALL EMERGENCY SERVICES (911) IMMEDIATELY!"
                                         : urgency === "HIGH"
-                                        ? "⚠️ This needs prompt medical attention"
-                                        : "Consider scheduling a consultation soon"}
+                                          ? "⚠️ This needs prompt medical attention"
+                                          : "Consider scheduling a consultation soon"}
                                     </p>
                                     {urgency === "EMERGENCY" && (
                                       <p className="text-xs text-red-800 mb-3 font-medium">
@@ -486,28 +472,27 @@ export default function ChatbotPage() {
                                           .filter(m => m.role === "user")
                                           .map(m => m.content)
                                           .join(" | ");
-                                        
+
                                         const params = new URLSearchParams({
                                           specialty: specialist,
                                           urgency: urgency,
                                           symptoms: symptoms.slice(0, 500),
                                           context: message.content.slice(0, 500),
                                         });
-                                        
+
                                         router.push(`/appointments/book?${params.toString()}`);
                                       }}
-                                      className={`w-full sm:w-auto text-base py-3 px-6 ${
-                                        urgency === "EMERGENCY"
+                                      className={`w-full sm:w-auto text-base py-3 px-6 ${urgency === "EMERGENCY"
                                           ? "bg-red-600 hover:bg-red-700 animate-pulse"
                                           : urgency === "HIGH"
-                                          ? "bg-orange-600 hover:bg-orange-700"
-                                          : "bg-amber-600 hover:bg-amber-700"
-                                      } text-white font-bold shadow-lg hover:shadow-xl transition-all`}
+                                            ? "bg-orange-600 hover:bg-orange-700"
+                                            : "bg-amber-600 hover:bg-amber-700"
+                                        } text-white font-bold shadow-lg hover:shadow-xl transition-all`}
                                     >
                                       <svg className="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                       </svg>
-                                      {urgency === "EMERGENCY" 
+                                      {urgency === "EMERGENCY"
                                         ? "Find Emergency Care / Book Urgent Appointment"
                                         : `Book ${specialist.charAt(0).toUpperCase() + specialist.slice(1)} Appointment`}
                                     </Button>

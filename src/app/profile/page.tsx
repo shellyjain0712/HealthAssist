@@ -1,14 +1,14 @@
 "use client"
 
-import { useSession } from "next-auth/react"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 export default function ProfilePage() {
   const { data: session, status } = useSession()
@@ -128,7 +128,7 @@ export default function ProfilePage() {
       } else {
         setMessage(data.error || "Failed to update profile")
       }
-    } catch (error) {
+    } catch {
       setMessage("An error occurred. Please try again.")
     } finally {
       setSaving(false)
@@ -177,9 +177,8 @@ export default function ProfilePage() {
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-6">
               {message && (
-                <div className={`p-3 rounded-md text-sm ${
-                  message.includes("success") ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
-                }`}>
+                <div className={`p-3 rounded-md text-sm ${message.includes("success") ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                  }`}>
                   {message}
                 </div>
               )}

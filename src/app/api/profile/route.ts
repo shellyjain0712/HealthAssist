@@ -2,9 +2,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateProfileSchema } from "@/lib/validations/auth";
 import { getServerSession } from "next-auth";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     console.error("Get profile error:", error);
     return NextResponse.json(
       { error: "Internal server error", details: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -63,7 +63,7 @@ export async function PUT(req: NextRequest) {
     const validatedData = updateProfileSchema.parse(body);
     console.log(
       "PUT Profile - Validated data:",
-      JSON.stringify(validatedData, null, 2)
+      JSON.stringify(validatedData, null, 2),
     );
 
     // Check if profile exists first
@@ -141,13 +141,13 @@ export async function PUT(req: NextRequest) {
     if (error.name === "ZodError") {
       return NextResponse.json(
         { error: "Invalid input", details: error.errors },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     return NextResponse.json(
       { error: "Internal server error", details: String(error) },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 export default function PatientsPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilter, setSelectedFilter] = useState("all")
