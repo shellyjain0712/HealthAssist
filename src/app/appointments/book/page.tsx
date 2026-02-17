@@ -76,8 +76,6 @@ function BookAppointmentContent() {
       }
     } catch (err) {
       console.error("Failed to fetch patient history:", err)
-    } finally {
-      setLoadingHistory(false)
     }
   }, [])
 
