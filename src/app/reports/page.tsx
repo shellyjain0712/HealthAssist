@@ -217,27 +217,27 @@ export default function ReportsPage() {
               </Card>
             </div>
 
-            {/* Consultation Types & Demographics */}
+            {/* Activity & Goals */}
             <div className="grid lg:grid-cols-2 gap-6">
               <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg">Consultation Types</CardTitle>
+                  <CardTitle className="text-lg">Health Goals Progress</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {[
-                      { type: "Follow-up", count: 45, color: "bg-emerald-500" },
-                      { type: "New Patient", count: 28, color: "bg-blue-500" },
-                      { type: "Routine Check-up", count: 22, color: "bg-purple-500" },
-                      { type: "Emergency", count: 8, color: "bg-red-500" },
-                      { type: "Telemedicine", count: 15, color: "bg-yellow-500" },
+                      { goal: "Daily Steps (10,000)", progress: 85, color: "bg-emerald-500" },
+                      { goal: "Water Intake (8 glasses)", progress: 100, color: "bg-blue-500" },
+                      { goal: "Sleep (8 hours)", progress: 75, color: "bg-purple-500" },
+                      { goal: "Medication Adherence", progress: 95, color: "bg-cyan-500" },
                     ].map((item) => (
-                      <div key={item.type} className="flex items-center gap-3">
-                        <div className={`w-4 h-4 rounded ${item.color}`} />
-                        <span className="flex-1 text-gray-700">{item.type}</span>
-                        <span className="font-semibold text-gray-900">{item.count}</span>
-                        <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className={`h-full ${item.color}`} style={{ width: `${(item.count / 45) * 100}%` }} />
+                      <div key={item.goal}>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-sm text-gray-700">{item.goal}</span>
+                          <span className="text-sm font-medium text-gray-900">{item.progress}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className={`h-full ${item.color} rounded-full`} style={{ width: `${item.progress}%` }} />
                         </div>
                       </div>
                     ))}
@@ -247,24 +247,22 @@ export default function ReportsPage() {
 
               <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg">Top Conditions Treated</CardTitle>
+                  <CardTitle className="text-lg">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {[
-                      { condition: "Hypertension", count: 32, trend: "+5%" },
-                      { condition: "Type 2 Diabetes", count: 28, trend: "+2%" },
-                      { condition: "Respiratory Infections", count: 24, trend: "-8%" },
-                      { condition: "Anxiety/Depression", count: 18, trend: "+12%" },
-                      { condition: "Musculoskeletal Pain", count: 15, trend: "+3%" },
-                    ].map((item) => (
-                      <div key={item.condition} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">{item.condition}</span>
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-gray-900">{item.count}</span>
-                          <span className={`text-sm ${item.trend.startsWith("+") ? "text-emerald-600" : "text-red-600"}`}>
-                            {item.trend}
-                          </span>
+                      { action: "Blood test completed", date: "Dec 18", icon: "🧪", type: "test" },
+                      { action: "Medication refilled", date: "Dec 15", icon: "💊", type: "med" },
+                      { action: "Virtual consultation", date: "Dec 12", icon: "📹", type: "consult" },
+                      { action: "Weight logged", date: "Dec 10", icon: "⚖️", type: "log" },
+                      { action: "Prescription uploaded", date: "Dec 8", icon: "📄", type: "doc" },
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <span className="text-xl">{item.icon}</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">{item.action}</p>
+                          <p className="text-xs text-gray-500">{item.date}</p>
                         </div>
                       </div>
                     ))}

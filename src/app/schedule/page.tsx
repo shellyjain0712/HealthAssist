@@ -37,6 +37,7 @@ export default function SchedulePage() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [blockedTimeSlot, setBlockedTimeSlot] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -78,6 +79,45 @@ export default function SchedulePage() {
       alert("Failed to update appointment")
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  const blockTimeSlot = async (time: string) => {
+    try {
+      const response = await fetch("/api/schedule/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: selectedDate.toISOString(), time }),
+      })
+      if (response.ok) {
+        alert("Time slot blocked successfully.");
+        fetchAppointments()
+      } else {
+        const data = await response.json()
+        alert(data.error || "Failed to block time slot.")
+      }
+    } catch (error) {
+      console.error("Error blocking time slot:", error)
+      alert("Failed to block time slot.")
+    }
+  }
+
+  const editWorkingTime = async (day: string, startTime: string, endTime: string) => {
+    try {
+      const response = await fetch("/api/schedule/working-hours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ day, startTime, endTime }),
+      })
+      if (response.ok) {
+        alert("Working hours updated successfully.");
+      } else {
+        const data = await response.json()
+        alert(data.error || "Failed to update working hours.");
+      }
+    } catch (error) {
+      console.error("Error updating working hours:", error)
+      alert("Failed to update working hours.")
     }
   }
 
@@ -145,6 +185,10 @@ export default function SchedulePage() {
   const confirmedCount = todayAppointments.filter(a => a.status === "confirmed").length
   const pendingCount = todayAppointments.filter(a => a.status === "pending").length
 
+  const handleAppointmentClick = (appointment: Appointment) => {
+    alert(`Appointment Details:\n\nPatient: ${appointment.patient.name}\nReason: ${appointment.reason}\nTime: ${appointment.time}\nStatus: ${appointment.status}`)
+  }
+
   if (status === "loading" || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50">
@@ -198,7 +242,10 @@ export default function SchedulePage() {
                   Week
                 </button>
               </div>
-              <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700">
+              <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700" onClick={() => {
+                const time = prompt("Enter time to block (e.g., 9:00 AM):");
+                if (time) blockTimeSlot(time);
+              }}>
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
@@ -209,13 +256,14 @@ export default function SchedulePage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Calendar */}
-          <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{currentMonth}</CardTitle>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid lg:grid-cols-3 gap-4">
+          {/* Calendar & Upcoming Appointments */}
+          <div className="space-y-4">
+            <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{currentMonth}</CardTitle>
                 <div className="flex gap-1">
                   <button
                     onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
@@ -236,7 +284,7 @@ export default function SchedulePage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-4">
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {weekDays.map(day => (
                   <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">{day}</div>
@@ -265,29 +313,119 @@ export default function SchedulePage() {
                 ))}
               </div>
 
-              <div className="mt-6 space-y-2">
-                <h4 className="font-medium text-gray-900">
+              <div className="mt-4 space-y-2">
+                <h4 className="font-medium text-gray-900 text-sm">
                   {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} Summary
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="p-3 bg-emerald-50 rounded-lg text-center">
-                    <p className="text-2xl font-bold text-emerald-600">{todayAppointments.length}</p>
+                  <div className="p-2 bg-emerald-50 rounded-lg text-center">
+                    <p className="text-xl font-bold text-emerald-600">{todayAppointments.length}</p>
                     <p className="text-xs text-gray-600">Total</p>
                   </div>
-                  <div className="p-3 bg-blue-50 rounded-lg text-center">
-                    <p className="text-2xl font-bold text-blue-600">{confirmedCount}</p>
+                  <div className="p-2 bg-blue-50 rounded-lg text-center">
+                    <p className="text-xl font-bold text-blue-600">{confirmedCount}</p>
                     <p className="text-xs text-gray-600">Confirmed</p>
                   </div>
                 </div>
                 {pendingCount > 0 && (
-                  <div className="p-3 bg-yellow-50 rounded-lg text-center">
-                    <p className="text-lg font-bold text-yellow-600">{pendingCount} Pending</p>
+                  <div className="p-2 bg-yellow-50 rounded-lg text-center">
+                    <p className="text-base font-bold text-yellow-600">{pendingCount} Pending</p>
                     <p className="text-xs text-gray-600">Awaiting confirmation</p>
                   </div>
                 )}
               </div>
             </CardContent>
-          </Card>
+            </Card>
+
+            {/* Upcoming Appointments - Compact */}
+            {appointments.length > 0 && (
+              <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold">Upcoming</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 pb-4">
+                  {appointments
+                    .filter(apt => new Date(apt.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
+                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                    .slice(0, 5)
+                    .map((apt) => (
+                      <div
+                        key={apt.id}
+                        className="p-2 bg-white rounded-lg border border-gray-100 hover:shadow-sm transition-shadow cursor-pointer"
+                        onClick={() => handleAppointmentClick(apt)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm text-gray-900 truncate">{apt.patient.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(apt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {apt.time}
+                            </p>
+                          </div>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-medium capitalize flex-shrink-0 ml-2 ${apt.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
+                            apt.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                              apt.status === "completed" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
+                            }`}>
+                            {apt.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Week Overview */}
+            <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-semibold">This Week</CardTitle>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-2 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">Completed</span>
+                    </div>
+                    <span className="text-lg font-bold text-emerald-600">
+                      {appointments.filter(a => a.status === "completed").length}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-2 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">Pending</span>
+                    </div>
+                    <span className="text-lg font-bold text-yellow-600">
+                      {appointments.filter(a => a.status === "pending").length}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-xs font-medium text-gray-700">Total Patients</span>
+                    </div>
+                    <span className="text-lg font-bold text-blue-600">
+                      {new Set(appointments.map(a => a.patient.id)).size}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Day Schedule */}
           <Card className="lg:col-span-2 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
@@ -394,83 +532,30 @@ export default function SchedulePage() {
           </Card>
         </div>
 
-        {/* All Appointments List */}
-        {appointments.length > 0 && (
-          <Card className="mt-6 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">All Upcoming Appointments</CardTitle>
-              <CardDescription>Your scheduled appointments across all dates</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {appointments
-                  .filter(apt => new Date(apt.date) >= new Date(new Date().setHours(0, 0, 0, 0)))
-                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                  .slice(0, 10)
-                  .map((apt) => (
-                    <div
-                      key={apt.id}
-                      className="flex items-center gap-4 p-4 bg-white rounded-xl border border-gray-100 hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => {
-                        setSelectedDate(new Date(apt.date))
-                      }}
-                    >
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${apt.status === "confirmed" ? "bg-emerald-100" :
-                        apt.status === "pending" ? "bg-yellow-100" :
-                          apt.status === "completed" ? "bg-blue-100" : "bg-gray-100"
-                        }`}>
-                        <svg className={`w-6 h-6 ${apt.status === "confirmed" ? "text-emerald-600" :
-                          apt.status === "pending" ? "text-yellow-600" :
-                            apt.status === "completed" ? "text-blue-600" : "text-gray-600"
-                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold text-gray-900">{apt.patient.name}</h4>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${apt.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
-                            apt.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                              apt.status === "completed" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
-                            }`}>
-                            {apt.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500">
-                          {new Date(apt.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at {apt.time}
-                        </p>
-                        <p className="text-xs text-gray-400">{apt.reason || "Consultation"}</p>
-                      </div>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  ))}
+        {/* Working Hours Settings - Compact */}
+        <Card className="mt-4 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold">Working Hours</CardTitle>
+                <CardDescription className="text-xs">Set your availability</CardDescription>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Working Hours Settings */}
-        <Card className="mt-6 border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Working Hours</CardTitle>
-            <CardDescription>Set your availability for appointments</CardDescription>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => editWorkingTime("Monday", "09:00", "17:00")}>Edit</Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-7 gap-4">
+            <div className="grid grid-cols-7 gap-2">
               {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, index) => (
-                <div key={day} className={`p-4 rounded-xl text-center ${index < 5 ? "bg-emerald-50" : "bg-gray-50"}`}>
-                  <p className="font-medium text-gray-900">{day.slice(0, 3)}</p>
+                <div key={day} className={`p-2 rounded-lg text-center ${index < 5 ? "bg-emerald-50" : "bg-gray-50"}`}>
+                  <p className="font-medium text-xs text-gray-900">{day.slice(0, 3)}</p>
                   {index < 5 ? (
-                    <p className="text-sm text-emerald-600 mt-1">9AM - 5PM</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">9-5</p>
                   ) : (
-                    <p className="text-sm text-gray-400 mt-1">Off</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Off</p>
                   )}
                 </div>
               ))}
             </div>
-            <Button variant="outline" className="mt-4">Edit Working Hours</Button>
           </CardContent>
         </Card>
       </main>

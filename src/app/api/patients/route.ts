@@ -37,6 +37,7 @@ export async function GET() {
     );
 
     // If no appointments, get all patients (for demo purposes)
+    // Removed demo logic for fetching all patients
     const patients = await prisma.user.findMany({
       where:
         patientIds.length > 0

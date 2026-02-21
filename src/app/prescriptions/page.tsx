@@ -6,6 +6,26 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
+interface Medication {
+  name: string
+  quantity: string
+  frequency: string
+}
+
+interface Prescription {
+  id: number
+  name: string
+  dosage: string
+  duration: string
+  doctor: string
+  hospital: string
+  startDate: string
+  endDate: string
+  refillsLeft: number
+  instructions: string
+  medications: Medication[]
+}
+
 export default function PrescriptionsPage() {
   const { status } = useSession()
   const router = useRouter()
@@ -17,87 +37,9 @@ export default function PrescriptionsPage() {
     }
   }, [status, router])
 
-  const prescriptions = {
-    active: [
-      {
-        id: 1,
-        name: "Metformin 500mg",
-        dosage: "1 tablet twice daily",
-        duration: "3 months",
-        doctor: "Dr. Neha Reddy",
-        hospital: "Medanta Hospital",
-        startDate: "Jan 5, 2026",
-        endDate: "Apr 5, 2026",
-        refillsLeft: 2,
-        instructions: "Take with meals. Avoid alcohol.",
-        medications: [
-          { name: "Metformin 500mg", quantity: "60 tablets", frequency: "Twice daily" },
-        ]
-      },
-      {
-        id: 2,
-        name: "Blood Pressure Control",
-        dosage: "1 tablet daily",
-        duration: "Ongoing",
-        doctor: "Dr. Priya Sharma",
-        hospital: "Apollo Heart Centre",
-        startDate: "Dec 15, 2025",
-        endDate: "Ongoing",
-        refillsLeft: 5,
-        instructions: "Take in the morning. Monitor BP regularly.",
-        medications: [
-          { name: "Amlodipine 5mg", quantity: "30 tablets", frequency: "Once daily" },
-          { name: "Losartan 50mg", quantity: "30 tablets", frequency: "Once daily" },
-        ]
-      },
-      {
-        id: 3,
-        name: "Vitamin D Supplement",
-        dosage: "1 capsule weekly",
-        duration: "2 months",
-        doctor: "Dr. Rajesh Patel",
-        hospital: "Fortis Hospital",
-        startDate: "Jan 1, 2026",
-        endDate: "Mar 1, 2026",
-        refillsLeft: 1,
-        instructions: "Take with fatty food for better absorption.",
-        medications: [
-          { name: "Vitamin D3 60000 IU", quantity: "8 capsules", frequency: "Weekly" },
-        ]
-      },
-    ],
-    past: [
-      {
-        id: 4,
-        name: "Antibiotic Course",
-        dosage: "1 tablet thrice daily",
-        duration: "7 days",
-        doctor: "Dr. Neha Reddy",
-        hospital: "Medanta Hospital",
-        startDate: "Nov 10, 2025",
-        endDate: "Nov 17, 2025",
-        refillsLeft: 0,
-        instructions: "Complete the full course.",
-        medications: [
-          { name: "Amoxicillin 500mg", quantity: "21 tablets", frequency: "Three times daily" },
-        ]
-      },
-      {
-        id: 5,
-        name: "Pain Relief",
-        dosage: "As needed",
-        duration: "5 days",
-        doctor: "Dr. Vikram Singh",
-        hospital: "AIIMS Delhi",
-        startDate: "Oct 20, 2025",
-        endDate: "Oct 25, 2025",
-        refillsLeft: 0,
-        instructions: "Take only when needed. Max 3 tablets per day.",
-        medications: [
-          { name: "Ibuprofen 400mg", quantity: "15 tablets", frequency: "As needed" },
-        ]
-      },
-    ]
+  const prescriptions: { active: Prescription[], past: Prescription[] } = {
+    active: [],
+    past: [],
   }
 
   const [expandedPrescription, setExpandedPrescription] = useState<number | null>(null)
