@@ -91,10 +91,54 @@ export default function DoctorDashboard({ profile, onSignOut }: DoctorDashboardP
   const completedToday = todayAppointments.filter(apt => apt.status === "COMPLETED")
 
   const stats = [
-    { label: "Total Patients", value: patients.length.toString(), change: "", icon: "👥", color: "from-blue-500 to-blue-600" },
-    { label: "Today's Appointments", value: todayAppointments.length.toString(), change: `${upcomingToday.length} remaining`, icon: "📅", color: "from-emerald-500 to-teal-600" },
-    { label: "Pending Reviews", value: appointments.filter(a => a.status === "PENDING").length.toString(), change: "", icon: "📋", color: "from-orange-500 to-orange-600" },
-    { label: "Completed", value: completedToday.length.toString(), change: "Today", icon: "✅", color: "from-purple-500 to-purple-600" },
+    {
+      label: "Total Patients",
+      value: patients.length.toString(),
+      change: "",
+      icon: (
+        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+      bgColor: "bg-blue-100",
+      color: "from-blue-500 to-blue-600"
+    },
+    {
+      label: "Today's Appointments",
+      value: todayAppointments.length.toString(),
+      change: `${upcomingToday.length} remaining`,
+      icon: (
+        <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      bgColor: "bg-emerald-100",
+      color: "from-emerald-500 to-teal-600"
+    },
+    {
+      label: "Pending Reviews",
+      value: appointments.filter(a => a.status === "PENDING").length.toString(),
+      change: "",
+      icon: (
+        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+      bgColor: "bg-orange-100",
+      color: "from-orange-500 to-orange-600"
+    },
+    {
+      label: "Completed",
+      value: completedToday.length.toString(),
+      change: "today",
+      icon: (
+        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      bgColor: "bg-purple-100",
+      color: "from-purple-500 to-purple-600"
+    },
   ]
 
   // Get recent patients (last 5 unique patients from appointments)
@@ -214,13 +258,18 @@ export default function DoctorDashboard({ profile, onSignOut }: DoctorDashboardP
             <Card key={index} className="border-0 shadow-lg bg-white/70 backdrop-blur-sm hover:shadow-xl transition-all hover:-translate-y-1 group">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <div className={`w-10 h-10 bg-gradient-to-br ${stat.color} rounded-xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform`}>
+                  <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
                     {stat.icon}
                   </div>
+                  {index === 1 && stat.change && (
+                    <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-medium">{stat.change}</span>
+                  )}
+                  {index === 3 && stat.change && (
+                    <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">{stat.change}</span>
+                  )}
                 </div>
                 <p className="text-sm text-gray-500">{stat.label}</p>
                 <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-                <p className="text-xs text-emerald-600 mt-1">{stat.change}</p>
               </CardContent>
             </Card>
           ))}
