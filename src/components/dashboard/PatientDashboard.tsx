@@ -50,12 +50,28 @@ export default function PatientDashboard({ profile, onSignOut }: PatientDashboar
         fetch("/api/records"),
         fetch("/api/prescriptions")
       ])
-      const aptData = await aptRes.json()
-      const recData = await recRes.json()
-      const rxData = await rxRes.json()
-      if (aptRes.ok) setAppointments(aptData.appointments || [])
-      if (recRes.ok) setRecords(recData.records || [])
-      if (rxRes.ok) setPrescriptions(rxData.prescriptions || [])
+      
+      // Check all responses
+      if (aptRes.ok) {
+        const aptData = await aptRes.json()
+        setAppointments(aptData.appointments || [])
+      } else {
+        console.error(`Appointments API error: ${aptRes.status}`)
+      }
+      
+      if (recRes.ok) {
+        const recData = await recRes.json()
+        setRecords(recData.records || [])
+      } else {
+        console.error(`Records API error: ${recRes.status}`)
+      }
+      
+      if (rxRes.ok) {
+        const rxData = await rxRes.json()
+        setPrescriptions(rxData.prescriptions || [])
+      } else {
+        console.error(`Prescriptions API error: ${rxRes.status}`)
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error)
     } finally {
@@ -66,6 +82,30 @@ export default function PatientDashboard({ profile, onSignOut }: PatientDashboar
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Auto-refresh appointments every 5 seconds to show doctor confirmations in real-time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const fetchAppointments = async () => {
+        try {
+          const res = await fetch("/api/appointments")
+          if (!res.ok) {
+            console.error(`Appointments refresh error: ${res.status}`)
+            return
+          }
+          const data = await res.json()
+          if (data.appointments) {
+            setAppointments(data.appointments)
+          }
+        } catch (error) {
+          console.error("Failed to refresh appointments:", error)
+        }
+      }
+      fetchAppointments()
+    }, 5000) // Refresh every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [])
 
   const upcomingAppointments = appointments.filter(apt => {
     const aptDate = new Date(apt.date)
@@ -122,11 +162,19 @@ export default function PatientDashboard({ profile, onSignOut }: PatientDashboar
 
           <div className="flex items-center gap-4">
             {/* Notification Bell */}
-            <button className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full">
+            <button
+              onClick={() => router.push("/notifications")}
+              className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              title="View all notifications"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
+              {appointments.filter(a => a.status === "confirmed").length > 0 && (
+                <span className="absolute top-0 right-0 flex items-center justify-center w-5 h-5 bg-emerald-500 text-white text-xs font-bold rounded-full animate-pulse">
+                  {appointments.filter(a => a.status === "confirmed").length}
+                </span>
+              )}
             </button>
 
             {/* User Info */}

@@ -1,5 +1,6 @@
 "use client"
 
+import { useToast } from "@/components/Toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useSession } from "next-auth/react"
@@ -32,6 +33,7 @@ interface Appointment {
 export default function SchedulePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { showConfirm } = useToast()
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<"day" | "week">("day")
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -161,11 +163,12 @@ export default function SchedulePage() {
 
   // Get appointments for selected date
   const getAppointmentsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
-    return appointments.filter(apt => {
-      const aptDate = new Date(apt.date).toISOString().split('T')[0]
-      return aptDate === dateStr
-    })
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    return appointments.filter(apt => apt.date === dateStr)
   }
 
   // Get appointment for specific time slot on selected date
@@ -264,77 +267,77 @@ export default function SchedulePage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{currentMonth}</CardTitle>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1))}
-                    className="p-1.5 hover:bg-gray-100 rounded-lg"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1))}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1))}
+                      className="p-1.5 hover:bg-gray-100 rounded-lg"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pb-4">
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {weekDays.map(day => (
-                  <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">{day}</div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {calendarDays.map((day, index) => (
-                  <button
-                    key={index}
-                    disabled={day === null}
-                    onClick={() => day && setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day))}
-                    className={`aspect-square rounded-lg text-sm font-medium transition-all relative ${day === null ? "" :
-                      day === selectedDate.getDate()
-                        ? "bg-emerald-600 text-white"
-                        : day === new Date().getDate() && selectedDate.getMonth() === new Date().getMonth() && selectedDate.getFullYear() === new Date().getFullYear()
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "hover:bg-gray-100 text-gray-700"
-                      }`}
-                  >
-                    {day}
-                    {day && dayHasAppointments(day) && (
-                      <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${day === selectedDate.getDate() ? "bg-white" : "bg-emerald-500"
-                        }`} />
-                    )}
-                  </button>
-                ))}
-              </div>
+              </CardHeader>
+              <CardContent className="pb-4">
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {weekDays.map(day => (
+                    <div key={day} className="text-center text-xs font-medium text-gray-500 py-2">{day}</div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {calendarDays.map((day, index) => (
+                    <button
+                      key={index}
+                      disabled={day === null}
+                      onClick={() => day && setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day))}
+                      className={`aspect-square rounded-lg text-sm font-medium transition-all relative ${day === null ? "" :
+                        day === selectedDate.getDate()
+                          ? "bg-emerald-600 text-white"
+                          : day === new Date().getDate() && selectedDate.getMonth() === new Date().getMonth() && selectedDate.getFullYear() === new Date().getFullYear()
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "hover:bg-gray-100 text-gray-700"
+                        }`}
+                    >
+                      {day}
+                      {day && dayHasAppointments(day) && (
+                        <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${day === selectedDate.getDate() ? "bg-white" : "bg-emerald-500"
+                          }`} />
+                      )}
+                    </button>
+                  ))}
+                </div>
 
-              <div className="mt-4 space-y-2">
-                <h4 className="font-medium text-gray-900 text-sm">
-                  {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} Summary
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-emerald-50 rounded-lg text-center">
-                    <p className="text-xl font-bold text-emerald-600">{todayAppointments.length}</p>
-                    <p className="text-xs text-gray-600">Total</p>
+                <div className="mt-4 space-y-2">
+                  <h4 className="font-medium text-gray-900 text-sm">
+                    {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} Summary
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 bg-emerald-50 rounded-lg text-center">
+                      <p className="text-xl font-bold text-emerald-600">{todayAppointments.length}</p>
+                      <p className="text-xs text-gray-600">Total</p>
+                    </div>
+                    <div className="p-2 bg-blue-50 rounded-lg text-center">
+                      <p className="text-xl font-bold text-blue-600">{confirmedCount}</p>
+                      <p className="text-xs text-gray-600">Confirmed</p>
+                    </div>
                   </div>
-                  <div className="p-2 bg-blue-50 rounded-lg text-center">
-                    <p className="text-xl font-bold text-blue-600">{confirmedCount}</p>
-                    <p className="text-xs text-gray-600">Confirmed</p>
-                  </div>
+                  {pendingCount > 0 && (
+                    <div className="p-2 bg-yellow-50 rounded-lg text-center">
+                      <p className="text-base font-bold text-yellow-600">{pendingCount} Pending</p>
+                      <p className="text-xs text-gray-600">Awaiting confirmation</p>
+                    </div>
+                  )}
                 </div>
-                {pendingCount > 0 && (
-                  <div className="p-2 bg-yellow-50 rounded-lg text-center">
-                    <p className="text-base font-bold text-yellow-600">{pendingCount} Pending</p>
-                    <p className="text-xs text-gray-600">Awaiting confirmation</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
+              </CardContent>
             </Card>
 
             {/* Upcoming Appointments - Compact */}
@@ -394,7 +397,7 @@ export default function SchedulePage() {
                       {appointments.filter(a => a.status === "completed").length}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between p-2 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg">
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
@@ -495,8 +498,9 @@ export default function SchedulePage() {
                                   size="sm"
                                   variant="outline"
                                   className="h-7 text-xs bg-red-50 text-red-700 hover:bg-red-100"
-                                  onClick={() => {
-                                    if (confirm("Are you sure you want to cancel this appointment?")) {
+                                  onClick={async () => {
+                                    const confirmed = await showConfirm("Are you sure you want to cancel this appointment?")
+                                    if (confirmed) {
                                       updateAppointmentStatus(appointment.id, "CANCELLED")
                                     }
                                   }}

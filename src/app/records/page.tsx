@@ -1,5 +1,6 @@
 "use client"
 
+import { useToast } from "@/components/Toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import type { Session } from "next-auth"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface ExtendedSession extends Session {
   user: Session["user"] & {
@@ -56,13 +57,19 @@ interface HealthRecord {
 export default function RecordsPage() {
   const { data: session, status } = useSession() as { data: ExtendedSession | null; status: "authenticated" | "loading" | "unauthenticated" }
   const router = useRouter()
+  const { addToast, showConfirm } = useToast()
   const [activeCategory, setActiveCategory] = useState<string>("all")
   const [records, setRecords] = useState<HealthRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState<HealthRecord | null>(null)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const searchTimeoutRef = useRef<NodeJS.Timeout>()
 
   // New record form state
   const [newRecord, setNewRecord] = useState({
@@ -74,6 +81,98 @@ export default function RecordsPage() {
     notes: "",
     recordDate: new Date().toISOString().split("T")[0],
   })
+
+  const handleDownload = async (fileUrl: string, fileName: string) => {
+    try {
+      if (!fileUrl) {
+        addToast("No file available for download", "error")
+        showPushNotification("No File", "No file available for download", "error")
+        return
+      }
+
+      addToast("Downloading file...", "warning", 5000)
+
+      // Check if it's a data URL (base64 encoded)
+      if (fileUrl.startsWith("data:")) {
+        try {
+          const link = document.createElement("a")
+          link.href = fileUrl
+          link.download = fileName || "document"
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          addToast("File downloaded successfully!", "success")
+        } catch (error) {
+          throw new Error("Failed to download data URL")
+        }
+      } else {
+        // Handle regular URLs
+        const response = await fetch(fileUrl, {
+          method: "GET",
+          headers: {
+            "Accept": "*/*",
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error: ${response.status} ${response.statusText}`)
+        }
+
+        const blob = await response.blob()
+        if (blob.size === 0) {
+          throw new Error("Downloaded file is empty")
+        }
+
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = fileName || "document"
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+
+        addToast("File downloaded successfully!", "success")
+      }
+    } catch (error) {
+      console.error("Download error:", error)
+      const errorMsg = error instanceof Error ? error.message : "Unknown error occurred"
+      addToast(`Error downloading file: ${errorMsg}`, "error")
+      showPushNotification("Download Failed ❌", `Could not download file: ${errorMsg}`, "error")
+    }
+  }
+
+  const showPushNotification = (title: string, message: string, type: "success" | "error" | "warning") => {
+    // Request permission if not granted
+    if ("Notification" in window && Notification.permission === "granted") {
+      const options: NotificationOptions = {
+        body: message,
+        icon: "/icon.png",
+        badge: "/badge.png",
+        tag: `notification-${Date.now()}`,
+      }
+
+      if (type === "error") {
+        options.tag = "error-notification"
+      } else if (type === "warning") {
+        options.tag = "warning-notification"
+      }
+
+      new Notification(title, options)
+    } else if ("Notification" in window && Notification.permission !== "denied") {
+      Notification.requestPermission().then((permission) => {
+        if (permission === "granted") {
+          const options: NotificationOptions = {
+            body: message,
+            icon: "/icon.png",
+            badge: "/badge.png",
+            tag: type === "error" ? "error-notification" : `notification-${Date.now()}`,
+          }
+          new Notification(title, options)
+        }
+      })
+    }
+  }
 
   const categories = [
     { id: "all", name: "All Records", icon: "📋" },
@@ -90,19 +189,42 @@ export default function RecordsPage() {
       setLoading(true)
       const params = new URLSearchParams()
       if (activeCategory !== "all") params.append("category", activeCategory)
-      if (searchQuery) params.append("search", searchQuery)
+      if (debouncedSearch) params.append("search", debouncedSearch)
+      params.append("page", page.toString())
+      params.append("limit", "10") // Load 10 records per page
 
       const response = await fetch(`/api/records?${params.toString()}`)
       const data = await response.json()
       if (response.ok) {
-        setRecords(data.records)
+        setRecords(data.records || [])
+        setTotalPages(data.totalPages || 1)
+        setHasMore(data.hasMore || false)
       }
     } catch (error) {
       console.error("Failed to fetch records:", error)
+      addToast("Failed to load records", "error")
     } finally {
       setLoading(false)
     }
-  }, [activeCategory, searchQuery])
+  }, [activeCategory, debouncedSearch, page, addToast])
+
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1) // Reset to page 1 when search changes
+    }, 500) // Wait 500ms after user stops typing
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -158,18 +280,22 @@ export default function RecordsPage() {
   }
 
   const handleDeleteRecord = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this record?")) return
+    const confirmed = await showConfirm("Are you sure you want to delete this record? This action cannot be undone.")
+
+    if (!confirmed) return
 
     try {
       const response = await fetch(`/api/records/${id}`, { method: "DELETE" })
       if (response.ok) {
+        addToast("Record deleted successfully", "success")
         fetchRecords()
       } else {
         const data = await response.json()
-        alert(data.error || "Failed to delete record")
+        addToast(data.error || "Failed to delete record", "error")
       }
     } catch (error) {
       console.error("Error deleting record:", error)
+      addToast("Failed to delete record", "error")
     }
   }
 
@@ -394,7 +520,7 @@ export default function RecordsPage() {
                           </svg>
                         </Button>
                         {record.fileUrl && (
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => handleDownload(record.fileUrl!, record.fileName || "document")}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
@@ -411,6 +537,29 @@ export default function RecordsPage() {
                 </Card>
               )
             })
+          )}
+
+          {/* Pagination Controls */}
+          {records.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <Button
+                variant="outline"
+                onClick={() => setPage(Math.max(1, page - 1))}
+                disabled={page === 1 || loading}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-gray-600 px-4">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                disabled={page >= totalPages || !hasMore || loading}
+              >
+                Next
+              </Button>
+            </div>
           )}
         </div>
       </main>
@@ -617,7 +766,7 @@ export default function RecordsPage() {
                     Close
                   </Button>
                   {selectedRecord.fileUrl && (
-                    <Button className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600">
+                    <Button className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600" onClick={() => handleDownload(selectedRecord.fileUrl!, selectedRecord.fileName || "document")}>
                       Download File
                     </Button>
                   )}

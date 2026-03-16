@@ -1,5 +1,6 @@
 "use client"
 
+import { useToast } from "@/components/Toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Session } from "next-auth"
@@ -41,10 +42,12 @@ interface Appointment {
 export default function AppointmentsPage() {
   const { data: session, status } = useSession() as { data: ExtendedSession | null; status: "authenticated" | "loading" | "unauthenticated" }
   const router = useRouter()
+  const { addToast, showConfirm } = useToast()
   const [activeTab, setActiveTab] = useState<"upcoming" | "past" | "cancelled">("upcoming")
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<string | null>(null)
 
   const fetchAppointments = useCallback(async () => {
     try {
@@ -74,7 +77,8 @@ export default function AppointmentsPage() {
   }, [status, fetchAppointments])
 
   const cancelAppointment = async (id: string) => {
-    if (!confirm("Are you sure you want to cancel this appointment?")) return
+    const confirmed = await showConfirm("Are you sure you want to cancel this appointment?")
+    if (!confirmed) return
     try {
       setCancelling(id)
       const response = await fetch(`/api/appointments/${id}`, {
@@ -83,14 +87,15 @@ export default function AppointmentsPage() {
         body: JSON.stringify({ status: "CANCELLED" }),
       })
       if (response.ok) {
+        addToast("Appointment cancelled successfully", "success", 3000)
         fetchAppointments()
       } else {
         const data = await response.json()
-        alert(data.error || "Failed to cancel")
+        addToast(data.error || "Failed to cancel appointment", "error", 4000)
       }
     } catch (error) {
       console.error("Cancel error:", error)
-      alert("Failed to cancel appointment")
+      addToast("Failed to cancel appointment", "error", 4000)
     } finally {
       setCancelling(null)
     }
@@ -158,12 +163,14 @@ export default function AppointmentsPage() {
               <span className="text-xl font-bold text-gray-800">My Appointments</span>
             </div>
 
-            <Button onClick={() => router.push("/appointments/book")} className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700">
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Book Appointment
-            </Button>
+            {session?.user?.role !== "DOCTOR" && (
+              <Button onClick={() => router.push("/appointments/book")} className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Book Appointment
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -254,16 +261,31 @@ export default function AppointmentsPage() {
                           <Button
                             size="sm"
                             className="bg-gradient-to-r from-emerald-600 to-teal-600"
+                            disabled={confirming === apt.id}
                             onClick={async () => {
-                              const res = await fetch(`/api/appointments/${apt.id}`, {
-                                method: "PATCH",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ status: "CONFIRMED" }),
-                              })
-                              if (res.ok) fetchAppointments()
+                              if (confirming === apt.id) {
+                                addToast("Already confirming this appointment, please wait...", "warning", 2000)
+                                return
+                              }
+                              setConfirming(apt.id)
+                              try {
+                                const res = await fetch(`/api/appointments/${apt.id}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ status: "CONFIRMED" }),
+                                })
+                                if (res.ok) {
+                                  addToast("Appointment confirmed successfully!", "success", 3000)
+                                  fetchAppointments()
+                                } else {
+                                  addToast("Failed to confirm appointment", "error", 4000)
+                                }
+                              } finally {
+                                setConfirming(null)
+                              }
                             }}
                           >
-                            Confirm
+                            {confirming === apt.id ? "Confirming..." : "Confirm"}
                           </Button>
                         )}
                         <Button

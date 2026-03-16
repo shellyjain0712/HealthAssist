@@ -1,5 +1,6 @@
 "use client"
 
+import { useToast } from "@/components/Toast"
 import { Button } from "@/components/ui/button"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -67,6 +68,7 @@ function UserAvatar() {
 export default function ChatbotPage() {
   const { status } = useSession()
   const router = useRouter()
+  const { addToast, showConfirm } = useToast()
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -89,10 +91,20 @@ export default function ChatbotPage() {
     try {
       setLoadingSessions(true)
       const response = await fetch("/api/chat")
-      const data = await response.json()
-      if (response.ok) {
-        setSessions(data.sessions || [])
+      
+      if (!response.ok) {
+        console.error(`API Error: ${response.status} ${response.statusText}`)
+        return
       }
+      
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("Invalid response content type:", contentType)
+        return
+      }
+      
+      const data = await response.json()
+      setSessions(data.sessions || [])
     } catch (error) {
       console.error("Failed to fetch sessions:", error)
     } finally {
@@ -103,8 +115,20 @@ export default function ChatbotPage() {
   const loadSession = async (sessionId: string) => {
     try {
       const response = await fetch(`/api/chat?sessionId=${sessionId}`)
+      
+      if (!response.ok) {
+        console.error(`API Error: ${response.status} ${response.statusText}`)
+        return
+      }
+      
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("Invalid response content type:", contentType)
+        return
+      }
+      
       const data = await response.json()
-      if (response.ok && data.session) {
+      if (data.session) {
         setCurrentSessionId(sessionId)
         setMessages(data.session.messages || [])
       }
@@ -154,38 +178,50 @@ export default function ChatbotPage() {
         }),
       })
 
+      if (!response.ok) {
+        console.error(`API Error: ${response.status} ${response.statusText}`)
+        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
+        alert("Failed to send message. Please try again.")
+        return
+      }
+
+      const contentType = response.headers.get("content-type")
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("Invalid response content type:", contentType)
+        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
+        alert("Invalid response from server")
+        return
+      }
+
       const data = await response.json()
 
-      if (response.ok) {
-        if (!currentSessionId) {
-          setCurrentSessionId(data.sessionId)
-          fetchSessions() // Refresh session list
-        }
-
-        const aiMessage: ChatMessage = {
-          id: data.message.id,
-          role: "assistant",
-          content: data.message.content,
-          symptoms: data.message.symptoms,
-          analysis: data.message.analysis,
-        }
-
-        setMessages((prev) => [...prev, aiMessage])
-      } else {
-        // Remove the user message if request failed
-        setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
-        alert(data.error || "Failed to send message")
+      if (!currentSessionId) {
+        setCurrentSessionId(data.sessionId)
+        fetchSessions()
       }
+
+      const aiMessage: ChatMessage = {
+        id: data.message.id,
+        role: "assistant",
+        content: data.message.content,
+        symptoms: data.message.symptoms,
+        analysis: data.message.analysis,
+      }
+
+      setMessages((prev) => [...prev, aiMessage])
     } catch (error) {
       console.error("Error sending message:", error)
       setMessages((prev) => prev.filter((m) => m.id !== userMessage.id))
+      alert("Error: " + (error instanceof Error ? error.message : "Unknown error"))
     } finally {
       setSending(false)
     }
   }
 
   const deleteSession = async (sessionId: string) => {
-    if (!confirm("Are you sure you want to delete this chat?")) return
+    const confirmed = await showConfirm("Are you sure you want to delete this chat? This action cannot be undone.")
+
+    if (!confirmed) return
 
     try {
       const response = await fetch(`/api/chat?sessionId=${sessionId}`, {
@@ -193,13 +229,17 @@ export default function ChatbotPage() {
       })
 
       if (response.ok) {
+        addToast("Chat deleted successfully", "success")
         if (currentSessionId === sessionId) {
           startNewChat()
         }
         fetchSessions()
+      } else {
+        addToast("Failed to delete chat", "error")
       }
     } catch (error) {
       console.error("Error deleting session:", error)
+      addToast("Error deleting chat", "error")
     }
   }
 
@@ -372,174 +412,182 @@ export default function ChatbotPage() {
               </div>
             </div>
           ) : (
-            <div className="w-full">
+            <div className="w-full flex flex-col">
               {messages.map((message, index) => (
                 <div
                   key={message.id}
-                  className={`w-full ${message.role === "assistant" ? "bg-gray-50" : "bg-white"} border-b border-gray-100`}
+                  className={`w-full px-4 py-4 ${message.role === "assistant" ? "bg-white" : "bg-gradient-to-b from-teal-50 to-emerald-50"}`}
                 >
-                  <div className="max-w-3xl mx-auto px-4 py-6">
-                    <div className="flex gap-4 items-start">
-                      {message.role === "assistant" ? <AIAvatar /> : <UserAvatar />}
+                  <div className={`max-w-3xl mx-auto flex gap-3 ${message.role === "assistant" ? "justify-start" : "justify-end"}`}>
+                    {message.role === "assistant" && <AIAvatar />}
 
-                      <div className="flex-1 space-y-2 overflow-hidden">
+                    <div className={`flex-1 space-y-2 overflow-hidden ${message.role === "assistant" ? "max-w-2xl" : "max-w-xs sm:max-w-md"}`}>
+                      <div className={`rounded-2xl px-4 py-3 ${
+                        message.role === "assistant" 
+                          ? "bg-gray-100 text-gray-900" 
+                          : "bg-gradient-to-br from-teal-500 to-emerald-500 text-white"
+                      }`}>
                         {message.role === "assistant" ? (
-                          <div className="markdown-content">
+                          <div className="markdown-content text-sm">
                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                               {message.content}
                             </ReactMarkdown>
                           </div>
                         ) : (
-                          <p className="text-gray-900 leading-relaxed">{message.content}</p>
-                        )}
-
-                        {/* Urgent booking CTA for MEDIUM+ urgency */}
-                        {message.role === "assistant" && index === messages.length - 1 && (() => {
-                          // More flexible urgency detection
-                          let urgency: string | null = null;
-                          const content = message.content.toUpperCase();
-
-                          if (content.includes('EMERGENCY')) {
-                            urgency = 'EMERGENCY';
-                          } else if (content.includes('HIGH URGENCY') || content.includes('HIGH PRIORITY')) {
-                            urgency = 'HIGH';
-                          } else if (content.includes('MEDIUM URGENCY') || content.includes('MEDIUM PRIORITY')) {
-                            urgency = 'MEDIUM';
-                          }
-
-                          if (urgency === "MEDIUM" || urgency === "HIGH" || urgency === "EMERGENCY") {
-                            // Extract specialist from message - prioritize by medical context
-                            let specialist = "doctor";
-
-                            // Pregnancy/gynecological issues -> Gynecologist
-                            if (/pregnan(t|cy)|prenatal|birth|labor|contraction|gynecolog|obstetric|miscarriage|bleeding.*pregnan/i.test(message.content)) {
-                              specialist = "gynecologist";
-                            }
-                            // Heart/cardiac issues -> Cardiologist
-                            else if (/heart|cardiac|chest.*pain|cardiovascular|angina/i.test(message.content)) {
-                              specialist = "cardiologist";
-                            } else {
-                              const specialistMatch = message.content.match(/(gynecologist|cardiologist|neurologist|dermatologist|orthopedist|pediatrician|psychiatrist|general physician|ent specialist|pulmonologist|gastroenterologist|endocrinologist|rheumatologist|urologist|ophthalmologist)/i);
-                              specialist = specialistMatch?.[1] || "emergency medicine";
-                            }
-
-                            return (
-                              <div className={`mt-6 p-4 rounded-xl border-2 ${urgency === "EMERGENCY"
-                                  ? "bg-red-50 border-red-300"
-                                  : urgency === "HIGH"
-                                    ? "bg-orange-50 border-orange-300"
-                                    : "bg-amber-50 border-amber-300"
-                                }`}>
-                                <div className="flex items-start gap-4">
-                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${urgency === "EMERGENCY"
-                                      ? "bg-red-100"
-                                      : urgency === "HIGH"
-                                        ? "bg-orange-100"
-                                        : "bg-amber-100"
-                                    }`}>
-                                    {urgency === "EMERGENCY" ? (
-                                      <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                      </svg>
-                                    ) : (
-                                      <svg className={`w-5 h-5 ${urgency === "HIGH" ? "text-orange-600" : "text-amber-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      </svg>
-                                    )}
-                                  </div>
-                                  <div className="flex-1">
-                                    <p className={`text-sm font-semibold mb-2 ${urgency === "EMERGENCY"
-                                        ? "text-red-900"
-                                        : urgency === "HIGH"
-                                          ? "text-orange-900"
-                                          : "text-amber-900"
-                                      }`}>
-                                      {urgency === "EMERGENCY"
-                                        ? "🚨 CALL EMERGENCY SERVICES (911) IMMEDIATELY!"
-                                        : urgency === "HIGH"
-                                          ? "⚠️ This needs prompt medical attention"
-                                          : "Consider scheduling a consultation soon"}
-                                    </p>
-                                    {urgency === "EMERGENCY" && (
-                                      <p className="text-xs text-red-800 mb-3 font-medium">
-                                        If unable to get emergency care immediately, you can also book an urgent appointment:
-                                      </p>
-                                    )}
-                                    <Button
-                                      onClick={() => {
-                                        // Gather conversation context
-                                        const symptoms = messages
-                                          .filter(m => m.role === "user")
-                                          .map(m => m.content)
-                                          .join(" | ");
-
-                                        const params = new URLSearchParams({
-                                          specialty: specialist,
-                                          urgency: urgency,
-                                          symptoms: symptoms.slice(0, 500),
-                                          context: message.content.slice(0, 500),
-                                        });
-
-                                        router.push(`/appointments/book?${params.toString()}`);
-                                      }}
-                                      className={`w-full sm:w-auto text-base py-3 px-6 ${urgency === "EMERGENCY"
-                                          ? "bg-red-600 hover:bg-red-700 animate-pulse"
-                                          : urgency === "HIGH"
-                                            ? "bg-orange-600 hover:bg-orange-700"
-                                            : "bg-amber-600 hover:bg-amber-700"
-                                        } text-white font-bold shadow-lg hover:shadow-xl transition-all`}
-                                    >
-                                      <svg className="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                      </svg>
-                                      {urgency === "EMERGENCY"
-                                        ? "Find Emergency Care / Book Urgent Appointment"
-                                        : `Book ${specialist.charAt(0).toUpperCase() + specialist.slice(1)} Appointment`}
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-
-                        {/* Show quick actions for AI messages */}
-                        {message.role === "assistant" && message.analysis && message.analysis.specialists.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <p className="text-xs text-gray-500 mb-2 font-medium uppercase tracking-wide">Suggested Actions</p>
-                            <div className="flex flex-wrap gap-2">
-                              {message.analysis.specialists.slice(0, 2).map((specialist, i) => (
-                                <Button
-                                  key={i}
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => router.push(`/appointments/book?specialty=${encodeURIComponent(specialist)}`)}
-                                  className="text-teal-600 border-teal-200 hover:bg-teal-50 rounded-lg text-xs h-8 font-medium"
-                                >
-                                  <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                  </svg>
-                                  Book {specialist}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
+                          <p className="text-sm leading-relaxed">{message.content}</p>
                         )}
                       </div>
+
+                      {/* Urgent booking CTA for MEDIUM+ urgency */}
+                      {message.role === "assistant" && index === messages.length - 1 && (() => {
+                        // More flexible urgency detection
+                        let urgency: string | null = null;
+                        const content = message.content.toUpperCase();
+
+                        if (content.includes('EMERGENCY')) {
+                          urgency = 'EMERGENCY';
+                        } else if (content.includes('HIGH URGENCY') || content.includes('HIGH PRIORITY')) {
+                          urgency = 'HIGH';
+                        } else if (content.includes('MEDIUM URGENCY') || content.includes('MEDIUM PRIORITY')) {
+                          urgency = 'MEDIUM';
+                        }
+
+                        if (urgency === "MEDIUM" || urgency === "HIGH" || urgency === "EMERGENCY") {
+                          // Extract specialist from message - prioritize by medical context
+                          let specialist = "doctor";
+
+                          // Child/pediatric issues -> Pediatric
+                          if (/child|baby|kid|infant|toddler|newborn|my son|my daughter|pediatric|children's/i.test(message.content)) {
+                            specialist = "pediatric";
+                          }
+                          // Pregnancy/gynecological issues -> General Physician
+                          else if (/pregnan(t|cy)|prenatal|birth|labor|contraction|gynecolog|obstetric|miscarriage|bleeding.*pregnan/i.test(message.content)) {
+                            specialist = "general physician";
+                          }
+                          // Heart/cardiac issues -> Cardiologist
+                          else if (/heart|cardiac|chest.*pain|cardiovascular|angina/i.test(message.content)) {
+                            specialist = "cardiologist";
+                          } else {
+                            const specialistMatch = message.content.match(/(cardiologist|neurologist|dermatologist|orthopedist|psychiatrist|general physician|ent specialist|pulmonologist|gastroenterologist|endocrinologist|rheumatologist|urologist|ophthalmologist)/i);
+                            specialist = specialistMatch?.[1] || "general physician";
+                          }
+
+                          return (
+                            <div className={`mt-4 p-4 rounded-2xl border-2 ${urgency === "EMERGENCY"
+                              ? "bg-red-50 border-red-300"
+                              : urgency === "HIGH"
+                                ? "bg-orange-50 border-orange-300"
+                                : "bg-amber-50 border-amber-300"
+                              }`}>
+                              <div className="flex items-start gap-4">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${urgency === "EMERGENCY"
+                                  ? "bg-red-100"
+                                  : urgency === "HIGH"
+                                    ? "bg-orange-100"
+                                    : "bg-amber-100"
+                                  }`}>
+                                  {urgency === "EMERGENCY" ? (
+                                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                  ) : (
+                                    <svg className={`w-5 h-5 ${urgency === "HIGH" ? "text-orange-600" : "text-amber-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <p className={`text-sm font-semibold mb-2 ${urgency === "EMERGENCY"
+                                    ? "text-red-900"
+                                    : urgency === "HIGH"
+                                      ? "text-orange-900"
+                                      : "text-amber-900"
+                                    }`}>
+                                    {urgency === "EMERGENCY"
+                                      ? "🚨 CALL EMERGENCY SERVICES (911) IMMEDIATELY!"
+                                      : urgency === "HIGH"
+                                        ? "⚠️ This needs prompt medical attention"
+                                        : "Consider scheduling a consultation soon"}
+                                  </p>
+                                  {urgency === "EMERGENCY" && (
+                                    <p className="text-xs text-red-800 mb-3 font-medium">
+                                      If unable to get emergency care immediately, you can also book an urgent appointment:
+                                    </p>
+                                  )}
+                                  <Button
+                                    onClick={() => {
+                                      // Gather conversation context
+                                      const symptoms = messages
+                                        .filter(m => m.role === "user")
+                                        .map(m => m.content)
+                                        .join(" | ");
+
+                                      const params = new URLSearchParams({
+                                        specialty: specialist,
+                                        urgency: urgency,
+                                        symptoms: symptoms.slice(0, 500),
+                                        context: message.content.slice(0, 500),
+                                      });
+
+                                      router.push(`/appointments/book?${params.toString()}`);
+                                    }}
+                                    className={`w-full sm:w-auto text-base py-3 px-6 ${urgency === "EMERGENCY"
+                                      ? "bg-red-600 hover:bg-red-700 animate-pulse"
+                                      : urgency === "HIGH"
+                                        ? "bg-orange-600 hover:bg-orange-700"
+                                        : "bg-amber-600 hover:bg-amber-700"
+                                      } text-white font-bold shadow-lg hover:shadow-xl transition-all`}
+                                  >
+                                    <svg className="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    {urgency === "EMERGENCY"
+                                      ? "Find Emergency Care / Book Urgent Appointment"
+                                      : `Book ${specialist.charAt(0).toUpperCase() + specialist.slice(1)} Appointment`}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+
+                      {/* Show quick actions for AI messages */}
+                      {message.role === "assistant" && message.analysis && message.analysis.specialists.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-gray-300">
+                          <p className="text-xs text-gray-600 mb-2 font-medium uppercase tracking-wide">Suggested Actions</p>
+                          <div className="flex flex-wrap gap-2">
+                            {message.analysis.specialists.slice(0, 2).map((specialist, i) => (
+                              <Button
+                                key={i}
+                                size="sm"
+                                variant="outline"
+                                onClick={() => router.push(`/appointments/book?specialty=${encodeURIComponent(specialist)}`)}
+                                className="text-teal-600 border-teal-200 hover:bg-teal-50 rounded-lg text-xs h-8 font-medium"
+                              >
+                                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                Book {specialist}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+
+                    {message.role === "user" && <UserAvatar />}
                   </div>
                 </div>
               ))}
 
               {sending && (
-                <div className="w-full bg-gray-50 border-b border-gray-100">
-                  <div className="max-w-3xl mx-auto px-4 py-6">
-                    <div className="flex gap-4 items-start">
-                      <AIAvatar isTyping />
-                      <div className="flex-1">
-                        <TypingIndicator />
-                      </div>
+                <div className="w-full px-4 py-4 bg-white">
+                  <div className="max-w-3xl mx-auto flex gap-3 justify-start">
+                    <AIAvatar isTyping />
+                    <div className="flex-1">
+                      <TypingIndicator />
                     </div>
                   </div>
                 </div>

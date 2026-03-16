@@ -172,7 +172,6 @@ export default function DoctorsPage() {
                   : "bg-white text-gray-600 hover:bg-gray-50 shadow-sm"
                   }`}
               >
-                <span>{specialty.icon}</span>
                 <span>{specialty.name}</span>
                 <span className={`text-xs px-1.5 py-0.5 rounded-full ${selectedSpecialty === specialty.name ? "bg-white/20" : "bg-emerald-100 text-emerald-700"}`}>
                   {specialty.doctorCount}

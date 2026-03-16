@@ -14,6 +14,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const search = searchParams.get("search");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "10", 10);
+    const patientId = searchParams.get("patientId"); // Support doctor viewing patient records
+
+    const skip = (page - 1) * limit;
 
     // Build where clause based on user role
     const whereClause: Record<string, unknown> = {};
@@ -21,7 +26,13 @@ export async function GET(request: NextRequest) {
     if (session.user.role === "PATIENT") {
       whereClause.patientId = session.user.id;
     } else if (session.user.role === "DOCTOR") {
-      whereClause.doctorId = session.user.id;
+      // If patientId is provided, fetch that patient's records (doctor viewing patient records)
+      // Otherwise, fetch records the doctor created/managed
+      if (patientId) {
+        whereClause.patientId = patientId;
+      } else {
+        whereClause.doctorId = session.user.id;
+      }
     }
 
     // Filter by category
@@ -58,6 +69,13 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    // Get total count for pagination
+    const totalCount = await prisma.healthRecord.count({
+      where: whereClause,
+    });
+
+    const totalPages = Math.ceil(totalCount / limit);
+
     const records = await prisma.healthRecord.findMany({
       where: whereClause,
       include: {
@@ -88,6 +106,8 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { recordDate: "desc" },
+      skip,
+      take: limit,
     });
 
     // Format records for frontend
@@ -128,7 +148,13 @@ export async function GET(request: NextRequest) {
       createdAt: record.createdAt.toISOString(),
     }));
 
-    return NextResponse.json({ records: formattedRecords });
+    return NextResponse.json({
+      records: formattedRecords,
+      totalPages,
+      hasMore: page < totalPages,
+      currentPage: page,
+      totalCount,
+    });
   } catch (error) {
     console.error("Error fetching records:", error);
     return NextResponse.json(

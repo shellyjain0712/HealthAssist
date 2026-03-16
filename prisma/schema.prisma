@@ -45,6 +45,10 @@ model User {
   // Chat Sessions
   chatSessions        ChatSession[]
   
+  // Schedule Management
+  workingHours        WorkingHours[]
+  blockedSlots        BlockedSlot[]
+  
   @@index([email])
 }
 
@@ -121,7 +125,43 @@ model Appointment {
   @@index([status])
 }
 
-// Health Record Types
+model WorkingHours {
+  id            String    @id @default(cuid())
+  
+  doctorId      String
+  doctor        User      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek     Int       // 0-6 (Sunday-Saturday)
+  startTime     String    // HH:MM format
+  endTime       String    // HH:MM format
+  isWorkingDay  Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@unique([doctorId, dayOfWeek])
+  @@index([doctorId])
+}
+
+model BlockedSlot {
+  id            String    @id @default(cuid())
+  
+  doctorId      String
+  doctor        User      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  date          DateTime  // Date of the blocked slot
+  startTime     String    // HH:MM format
+  endTime       String    // HH:MM format
+  reason        String?   // e.g., "Leave", "Maintenance", "Personal"
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([doctorId])
+  @@index([date])
+}
+
+
 enum RecordCategory {
   LAB_REPORT
   PRESCRIPTION

@@ -1,5 +1,6 @@
 "use client"
 
+import { useToast } from "@/components/Toast"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -36,6 +37,7 @@ interface Specialty {
 function BookAppointmentContent() {
   const { status } = useSession()
   const router = useRouter()
+  const { addToast } = useToast()
   const searchParams = useSearchParams()
   const preselectedDoctorId = searchParams.get("doctor")
   const preselectedSpecialty = searchParams.get("specialty")
@@ -43,8 +45,18 @@ function BookAppointmentContent() {
   const symptomsContext = searchParams.get("symptoms")
   const aiContext = searchParams.get("context")
 
-  const [step, setStep] = useState(preselectedDoctorId ? 2 : preselectedSpecialty ? 2 : 1)
-  const [selectedSpecialty, setSelectedSpecialty] = useState(preselectedSpecialty || "")
+  // Detect if symptoms mention a child - if so, override specialty to Pediatric
+  let finalSpecialty = preselectedSpecialty || ""
+  const allContext = `${symptomsContext || ""} ${aiContext || ""}`.toLowerCase()
+  const isChildEmergency = /child|baby|kid|infant|toddler|newborn|my son|my daughter|pediatric|children's/i.test(allContext) &&
+    (urgencyLevel === "EMERGENCY" || urgencyLevel === "HIGH")
+
+  if (/child|baby|kid|infant|toddler|newborn|my son|my daughter|pediatric|children's/i.test(allContext)) {
+    finalSpecialty = "Pediatric"
+  }
+
+  const [step, setStep] = useState(preselectedDoctorId ? 2 : finalSpecialty ? 2 : 1)
+  const [selectedSpecialty, setSelectedSpecialty] = useState(finalSpecialty)
   const [selectedDoctor, setSelectedDoctor] = useState(preselectedDoctorId || "")
   const [selectedDate, setSelectedDate] = useState("")
   const [selectedTime, setSelectedTime] = useState("")
@@ -56,6 +68,9 @@ function BookAppointmentContent() {
   const [booking, setBooking] = useState(false)
   const [previousRecords, setPreviousRecords] = useState<any[]>([])
   const [previousPrescriptions, setPreviousPrescriptions] = useState<any[]>([])
+  const [bookedTimes, setBookedTimes] = useState<string[]>([])
+  const [loadingAvailability, setLoadingAvailability] = useState(false)
+  const [dismissedWarning, setDismissedWarning] = useState(false)
 
   // Fetch patient history (records & prescriptions)
   const fetchPatientHistory = useCallback(async () => {
@@ -117,6 +132,41 @@ function BookAppointmentContent() {
     }
   }, [])
 
+  // Fetch booked times for a specific date
+  const fetchBookedTimes = useCallback(async (doctorId: string, date: string) => {
+    try {
+      setLoadingAvailability(true)
+      const response = await fetch(
+        `/api/schedule/availability?doctorId=${doctorId}&date=${date}`
+      )
+      const data = await response.json()
+
+      console.log("Availability response:", data)
+
+      if (response.ok && data.schedule && data.schedule.length > 0) {
+        // Get the schedule for the selected date
+        const dateSchedule = data.schedule.find(
+          (d: any) => d.date === date
+        )
+        console.log(`Schedule for date ${date}:`, dateSchedule)
+
+        if (dateSchedule) {
+          // Extract booked and unavailable times
+          const unavailableTimes = dateSchedule.slots
+            .filter((slot: any) => !slot.isAvailable)
+            .map((slot: any) => slot.time)
+          console.log("Unavailable times:", unavailableTimes)
+          setBookedTimes(unavailableTimes)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch availability:", err)
+      setBookedTimes([])
+    } finally {
+      setLoadingAvailability(false)
+    }
+  }, [])
+
   // Fetch specialties on component mount
   useEffect(() => {
     fetchSpecialties()
@@ -139,12 +189,27 @@ function BookAppointmentContent() {
     }
   }, [preselectedSpecialty, specialties, fetchDoctors])
 
+  // Auto-detect Pediatric from symptoms and fetch doctors
+  useEffect(() => {
+    if (selectedSpecialty === "Pediatric") {
+      fetchDoctors("Pediatric")
+    }
+  }, [selectedSpecialty, fetchDoctors])
+
   // Fetch all doctors on mount if there's a preselected doctor
   useEffect(() => {
     if (preselectedDoctorId) {
       fetchDoctors()
     }
   }, [preselectedDoctorId, fetchDoctors])
+
+  // Fetch booked times when date changes
+  useEffect(() => {
+    if (selectedDate && selectedDoctor) {
+      fetchBookedTimes(selectedDoctor, selectedDate)
+      setSelectedTime("") // Reset selected time when date changes
+    }
+  }, [selectedDate, selectedDoctor, fetchBookedTimes])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -155,10 +220,9 @@ function BookAppointmentContent() {
   // Default specialties to show when no doctors are registered yet
   const defaultSpecialties = [
     { id: "cardiologist", name: "Cardiologist", icon: "❤️", doctorCount: 0 },
-    { id: "gynecologist", name: "Gynecologist", icon: "🤰", doctorCount: 0 },
     { id: "pediatric", name: "Pediatric", icon: "👶", doctorCount: 0 },
-    { id: "dermatology", name: "Dermatology", icon: "🩹", doctorCount: 0 },
-    { id: "orthopedic", name: "Orthopedic", icon: "🦴", doctorCount: 0 },
+    { id: "dermatology", name: "Dermatology", icon: "💊", doctorCount: 0 },
+    { id: "orthopedic", name: "Orthopedic", icon: "🔧", doctorCount: 0 },
     { id: "neurology", name: "Neurology", icon: "🧠", doctorCount: 0 },
     { id: "general-physician", name: "General Physician", icon: "👨‍⚕️", doctorCount: 0 },
     { id: "ent-specialist", name: "ENT Specialist", icon: "👂", doctorCount: 0 },
@@ -231,6 +295,44 @@ function BookAppointmentContent() {
       </div>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+        {/* Child Emergency Warning */}
+        {isChildEmergency && !dismissedWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 pointer-events-auto p-4">
+            <div className="bg-white rounded-lg shadow-2xl p-6 max-w-sm mx-4 animate-in fade-in zoom-in duration-300 border-t-4 border-red-600">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-red-600">⚠️ URGENT: Child's Emergency</h3>
+                  <p className="mt-2 text-sm text-gray-600">Your child needs immediate medical attention. Please complete this booking quickly and seek urgent pediatric care.</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setDismissedWarning(true)}
+                  className="flex-1"
+                >
+                  Proceed
+                </Button>
+                <Button
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold"
+                  onClick={() => {
+                    addToast("Please seek emergency medical care immediately - Call 911 or your local emergency number", "error", 5000)
+                    setDismissedWarning(true)
+                  }}
+                >
+                  Contact Emergency
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Step 1: Select Specialty */}
         {step === 1 && (
           <div>
@@ -264,7 +366,6 @@ function BookAppointmentContent() {
                         {specialty.doctorCount} {specialty.doctorCount === 1 ? "doctor" : "doctors"}
                       </span>
                     )}
-                    <div className="text-4xl mb-3">{specialty.icon}</div>
                     <h3 className="font-semibold text-gray-900">{specialty.name}</h3>
                   </button>
                 ))}
@@ -289,29 +390,54 @@ function BookAppointmentContent() {
                 <p className="text-gray-600">Loading doctors...</p>
               </div>
             ) : doctors.length === 0 ? (
-              <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
-                <CardContent className="p-12 text-center">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
+              <div>
+                <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm mb-8">
+                  <CardContent className="p-12 text-center">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">No doctors available</h3>
+                    <p className="text-gray-500 mt-1">No doctors registered for {selectedSpecialty} yet</p>
+                  </CardContent>
+                </Card>
+
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Try selecting another specialty</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {displaySpecialties.map((specialty) => (
+                      <button
+                        key={specialty.id}
+                        onClick={() => {
+                          setSelectedSpecialty(specialty.name)
+                          fetchDoctors(specialty.name)
+                        }}
+                        className={`p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 text-center relative ${selectedSpecialty === specialty.name ? "ring-2 ring-emerald-500" : ""
+                          }`}
+                      >
+                        {specialty.doctorCount > 0 && (
+                          <span className="absolute top-2 right-2 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">
+                            {specialty.doctorCount} {specialty.doctorCount === 1 ? "doctor" : "doctors"}
+                          </span>
+                        )}
+                        <h3 className="font-semibold text-gray-900 text-sm">{specialty.name}</h3>
+                      </button>
+                    ))}
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900">No doctors available</h3>
-                  <p className="text-gray-500 mt-1">No doctors registered for this specialty yet</p>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ) : (
               <div className="space-y-4">
                 {doctors.map((doctor) => (
                   <Card
                     key={doctor.id}
-                    className={`border-0 shadow-lg bg-white/70 backdrop-blur-sm cursor-pointer transition-all hover:shadow-xl ${selectedDoctor === doctor.id ? "ring-2 ring-emerald-500" : ""
+                    className={`border-0 shadow-lg bg-white/70 backdrop-blur-sm transition-all ${selectedDoctor === doctor.id ? "ring-2 ring-emerald-500" : ""
                       } ${!doctor.available ? "opacity-60" : ""}`}
-                    onClick={() => doctor.available && setSelectedDoctor(doctor.id)}
                   >
                     <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">
+                      <div className="flex items-start gap-4 mb-4">
+                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
                           {doctor.profileImage ? (
                             <img src={doctor.profileImage} alt={doctor.name} className="w-full h-full object-cover rounded-xl" />
                           ) : (
@@ -339,10 +465,23 @@ function BookAppointmentContent() {
                           </div>
                         </div>
 
-                        <div className="text-right">
+                        <div className="text-right flex-shrink-0">
                           <p className="text-2xl font-bold text-emerald-600">₹{doctor.fee}</p>
                           <p className="text-sm text-gray-500">per visit</p>
                         </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => {
+                            setSelectedDoctor(doctor.id)
+                            setStep(3)
+                          }}
+                          className="w-full px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!doctor.available}
+                        >
+                          Book Now
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
@@ -391,19 +530,37 @@ function BookAppointmentContent() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-2">
-                    {timeSlots.map((time) => (
-                      <button
-                        key={time}
-                        onClick={() => setSelectedTime(time)}
-                        className={`p-2 rounded-lg text-sm font-medium transition-all ${selectedTime === time
-                          ? "bg-emerald-600 text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
+                    {timeSlots.map((time) => {
+                      const isBooked = bookedTimes.includes(time)
+                      return (
+                        <button
+                          key={time}
+                          onClick={() => !isBooked && setSelectedTime(time)}
+                          disabled={isBooked}
+                          className={`p-2 rounded-lg text-sm font-medium transition-all ${isBooked
+                            ? "bg-red-100 text-red-600 cursor-not-allowed opacity-60"
+                            : selectedTime === time
+                              ? "bg-emerald-600 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                          title={isBooked ? "This time slot is already booked" : ""}
+                        >
+                          {time}
+                        </button>
+                      )
+                    })}
                   </div>
+                  {selectedDate && (
+                    <p className="text-xs text-gray-500 mt-3">
+                      {loadingAvailability ? (
+                        <span className="text-blue-600">Checking availability...</span>
+                      ) : bookedTimes.length > 0 ? (
+                        <span>{bookedTimes.length} slot(s) already booked on this date</span>
+                      ) : (
+                        <span className="text-emerald-600">✓ All slots available</span>
+                      )}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -416,10 +573,10 @@ function BookAppointmentContent() {
               <CardContent>
                 {urgencyLevel && (
                   <div className={`mb-4 p-3 rounded-lg border-2 flex items-center gap-3 ${urgencyLevel === "EMERGENCY"
-                      ? "bg-red-50 border-red-300 text-red-900"
-                      : urgencyLevel === "HIGH"
-                        ? "bg-orange-50 border-orange-300 text-orange-900"
-                        : "bg-amber-50 border-amber-300 text-amber-900"
+                    ? "bg-red-50 border-red-300 text-red-900"
+                    : urgencyLevel === "HIGH"
+                      ? "bg-orange-50 border-orange-300 text-orange-900"
+                      : "bg-amber-50 border-amber-300 text-amber-900"
                     }`}>
                     <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -616,14 +773,14 @@ function BookAppointmentContent() {
                     const data = await response.json()
 
                     if (response.ok) {
-                      alert("Appointment booked successfully!")
-                      router.push("/appointments")
+                      addToast("Appointment booked successfully!", "success", 3000)
+                      setTimeout(() => router.push("/appointments"), 1000)
                     } else {
-                      alert(data.error || "Failed to book appointment")
+                      addToast(data.error || "Failed to book appointment", "error", 4000)
                     }
                   } catch (error) {
                     console.error("Booking error:", error)
-                    alert("Failed to book appointment")
+                    addToast("Failed to book appointment", "error", 4000)
                   } finally {
                     setBooking(false)
                   }

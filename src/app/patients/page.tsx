@@ -61,11 +61,6 @@ export default function PatientsPage() {
     return matchesSearch
   })
 
-  const handleRefillRequest = (prescriptionId: number | string) => {
-    // Logic to handle prescription refill request
-    console.log(`Requesting refill for prescription ID: ${prescriptionId}`)
-  }
-
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50">
@@ -180,11 +175,11 @@ export default function PatientsPage() {
                     </div>
 
                     <div className="flex gap-3 mt-4">
-                      <Button size="sm" variant="outline">View Records</Button>
-                      <Button size="sm" variant="outline" onClick={() => handleRefillRequest(patient.id)}>
+                      <Button size="sm" variant="outline" onClick={() => router.push(`/patients/${patient.id}/records`)}>View Records</Button>
+                      <Button size="sm" variant="outline" onClick={() => router.push(`/prescriptions?patientId=${patient.id}`)}>
                         Write Prescription
                       </Button>
-                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700">
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => router.push(`/appointments?patientId=${patient.id}`)}>
                         Schedule Follow-up
                       </Button>
                     </div>

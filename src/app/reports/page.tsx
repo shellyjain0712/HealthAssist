@@ -6,21 +6,45 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
+interface DoctorAnalytics {
+  metrics: {
+    totalPatients: number
+    newPatients: number
+    consultations: number
+    revenue: number
+    avgConsultTime: number
+    patientSatisfaction: number
+  }
+  charts: {
+    monthlyRevenue: { month: string; revenue: number }[]
+    patientGrowth: { month: string; new: number; returning: number }[]
+  }
+}
+
+interface PatientAnalytics {
+  metrics: {
+    appointments: number
+    medications: number
+    labTests: number
+    healthScore: number
+  }
+  trends: {
+    weight: number[]
+    bloodPressure: number[]
+  }
+}
+
 export default function ReportsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [timeRange, setTimeRange] = useState<"week" | "month" | "quarter" | "year">("month")
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin")
-    }
-  }, [status, router])
+  const [analytics, setAnalytics] = useState<DoctorAnalytics | PatientAnalytics | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const isDoctor = session?.user?.role === "DOCTOR"
 
-  // Doctor metrics
-  const doctorMetrics = {
+  // Fallback metrics
+  const doctorMetrics = (analytics as DoctorAnalytics)?.metrics || {
     totalPatients: 156,
     newPatients: 12,
     consultations: 89,
@@ -29,17 +53,135 @@ export default function ReportsPage() {
     patientSatisfaction: 4.8,
   }
 
-  // Patient metrics
-  const patientMetrics = {
+  const patientMetrics = (analytics as PatientAnalytics)?.metrics || {
     appointments: 8,
     medications: 3,
     labTests: 5,
     healthScore: 85,
-    weight: [72, 71.5, 71, 70.8, 70.5, 70.2],
-    bloodPressure: [120, 118, 122, 119, 117, 118]
   }
 
-  if (status === "loading") {
+  const doctorCharts = (analytics as DoctorAnalytics)?.charts || {
+    monthlyRevenue: Array(6).fill(0).map((_, i) => ({
+      month: ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i],
+      revenue: 0,
+    })),
+    patientGrowth: Array(6).fill(0).map((_, i) => ({
+      month: ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i],
+      new: 0,
+      returning: 0,
+    })),
+  }
+
+  const patientTrends = (analytics as PatientAnalytics)?.trends || {
+    weight: [72, 71.5, 71, 70.8, 70.5, 70.2],
+    bloodPressure: [120, 118, 122, 119, 117, 118],
+  }
+
+  const handleExport = () => {
+    if (!analytics) {
+      alert("No data to export yet")
+      return
+    }
+
+    const timestamp = new Date().toLocaleDateString('en-IN')
+    let csvContent = "data:text/csv;charset=utf-8,"
+
+    if (isDoctor) {
+      const doctorData = analytics as DoctorAnalytics
+      csvContent += `Reports & Analytics - Doctor Dashboard\n`
+      csvContent += `Exported: ${timestamp}\n`
+      csvContent += `Time Range: ${timeRange}\n\n`
+
+      // Metrics
+      csvContent += `Key Metrics\n`
+      csvContent += `Total Patients,${doctorData.metrics.totalPatients}\n`
+      csvContent += `New Patients,${doctorData.metrics.newPatients}\n`
+      csvContent += `Consultations,${doctorData.metrics.consultations}\n`
+      csvContent += `Revenue (₹),${doctorData.metrics.revenue}\n`
+      csvContent += `Avg Consultation Time (mins),${doctorData.metrics.avgConsultTime}\n`
+      csvContent += `Patient Satisfaction,${doctorData.metrics.patientSatisfaction}\n\n`
+
+      // Monthly Revenue
+      csvContent += `Monthly Revenue Trend\n`
+      csvContent += `Month,Revenue (₹)\n`
+      doctorData.charts.monthlyRevenue.forEach(data => {
+        csvContent += `${data.month},${data.revenue}\n`
+      })
+      csvContent += `\n`
+
+      // Patient Growth
+      csvContent += `Patient Growth (Monthly)\n`
+      csvContent += `Month,New Patients,Returning Patients\n`
+      doctorData.charts.patientGrowth.forEach(data => {
+        csvContent += `${data.month},${data.new},${data.returning}\n`
+      })
+    } else {
+      const patientData = analytics as PatientAnalytics
+      csvContent += `Reports & Analytics - Health Dashboard\n`
+      csvContent += `Exported: ${timestamp}\n`
+      csvContent += `Time Range: ${timeRange}\n\n`
+
+      // Metrics
+      csvContent += `Health Metrics\n`
+      csvContent += `Appointments,${patientData.metrics.appointments}\n`
+      csvContent += `Active Medications,${patientData.metrics.medications}\n`
+      csvContent += `Lab Tests,${patientData.metrics.labTests}\n`
+      csvContent += `Health Score,${patientData.metrics.healthScore}\n\n`
+
+      // Weight Trend
+      csvContent += `Weight Trend (kg)\n`
+      csvContent += `Month,Weight\n`
+      const months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      patientData.trends.weight.forEach((weight, index) => {
+        csvContent += `${months[index]},${weight}\n`
+      })
+      csvContent += `\n`
+
+      // Blood Pressure Trend
+      csvContent += `Blood Pressure Trend (mmHg - Systolic)\n`
+      csvContent += `Month,BP\n`
+      patientData.trends.bloodPressure.forEach((bp, index) => {
+        csvContent += `${months[index]},${bp}\n`
+      })
+    }
+
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute("download", `analytics_${timeRange}_${new Date().getTime()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin")
+    }
+  }, [status, router])
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/analytics?timeRange=${timeRange}`)
+        if (response.ok) {
+          const data = await response.json()
+          setAnalytics(data)
+        }
+      } catch (error) {
+        console.error("Failed to fetch analytics:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (session?.user?.id) {
+      fetchAnalytics()
+    }
+  }, [session, timeRange])
+
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-emerald-50 to-teal-50">
         <div className="flex flex-col items-center gap-4">
@@ -90,7 +232,7 @@ export default function ReportsPage() {
                   </button>
                 ))}
               </div>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleExport}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
@@ -139,7 +281,7 @@ export default function ReportsPage() {
               </Card>
               <Card className="border-0 shadow-lg bg-white/70 backdrop-blur-sm">
                 <CardContent className="p-4 text-center">
-                  <p className="text-3xl font-bold text-yellow-600">{doctorMetrics.patientSatisfaction}⭐</p>
+                  <p className="text-3xl font-bold text-yellow-600">{doctorMetrics.patientSatisfaction}</p>
                   <p className="text-sm text-gray-600">Satisfaction</p>
                 </CardContent>
               </Card>
@@ -155,17 +297,23 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-48 flex items-end justify-between gap-2">
-                    {[65, 72, 80, 75, 85, 92].map((height, index) => (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div
-                          className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-lg transition-all hover:from-emerald-600 hover:to-teal-500"
-                          style={{ height: `${height}%` }}
-                        />
-                        <span className="text-xs text-gray-500 mt-2">
-                          {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index]}
-                        </span>
-                      </div>
-                    ))}
+                    {doctorCharts.monthlyRevenue.map((data, index) => {
+                      const maxRevenue = Math.max(...doctorCharts.monthlyRevenue.map(d => d.revenue), 100)
+                      const height = maxRevenue > 0 ? (data.revenue / maxRevenue) * 100 : 5
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center">
+                          <div
+                            className="w-full bg-gradient-to-t from-emerald-500 to-teal-400 rounded-t-lg transition-all hover:from-emerald-600 hover:to-teal-500"
+                            style={{ height: `${Math.max(height, 5)}%` }}
+                            title={`₹${data.revenue.toLocaleString('en-IN')}`}
+                          />
+                          <span className="text-xs text-gray-500 mt-2">{data.month}</span>
+                          <span className="text-xs font-medium text-gray-600 mt-0.5">
+                            ₹{(data.revenue / 1000).toFixed(0)}K
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -178,30 +326,31 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-48 flex items-end justify-between gap-2">
-                    {[
-                      { new: 8, returning: 25 },
-                      { new: 12, returning: 28 },
-                      { new: 10, returning: 32 },
-                      { new: 15, returning: 30 },
-                      { new: 11, returning: 35 },
-                      { new: 14, returning: 38 },
-                    ].map((data, index) => (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div className="w-full flex flex-col gap-1" style={{ height: "80%" }}>
-                          <div
-                            className="w-full bg-blue-400 rounded-t-lg"
-                            style={{ height: `${(data.new / 50) * 100}%` }}
-                          />
-                          <div
-                            className="w-full bg-emerald-400 rounded-b-lg"
-                            style={{ height: `${(data.returning / 50) * 100}%` }}
-                          />
+                    {doctorCharts.patientGrowth.map((data, index) => {
+                      const maxPatients = Math.max(...doctorCharts.patientGrowth.flatMap(d => [d.new, d.returning]), 10)
+                      const newHeight = maxPatients > 0 ? (data.new / maxPatients) * 100 : 5
+                      const returningHeight = maxPatients > 0 ? (data.returning / maxPatients) * 100 : 5
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center">
+                          <div className="w-full flex flex-col gap-1" style={{ height: "80%" }}>
+                            <div
+                              className="w-full bg-blue-400 rounded-t-lg transition-all hover:bg-blue-500"
+                              style={{ height: `${Math.max(newHeight, 3)}%` }}
+                              title={`New: ${data.new}`}
+                            />
+                            <div
+                              className="w-full bg-emerald-400 rounded-b-lg transition-all hover:bg-emerald-500"
+                              style={{ height: `${Math.max(returningHeight, 3)}%` }}
+                              title={`Returning: ${data.returning}`}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-500 mt-2">{data.month}</span>
+                          <span className="text-xs font-medium text-gray-600 mt-0.5">
+                            {data.new + data.returning}
+                          </span>
                         </div>
-                        <span className="text-xs text-gray-500 mt-2">
-                          {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index]}
-                        </span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                   <div className="flex justify-center gap-6 mt-4">
                     <div className="flex items-center gap-2">
@@ -252,14 +401,14 @@ export default function ReportsPage() {
                 <CardContent>
                   <div className="space-y-3">
                     {[
-                      { action: "Blood test completed", date: "Dec 18", icon: "🧪", type: "test" },
-                      { action: "Medication refilled", date: "Dec 15", icon: "💊", type: "med" },
-                      { action: "Virtual consultation", date: "Dec 12", icon: "📹", type: "consult" },
-                      { action: "Weight logged", date: "Dec 10", icon: "⚖️", type: "log" },
-                      { action: "Prescription uploaded", date: "Dec 8", icon: "📄", type: "doc" },
+                      { action: "Blood test completed", date: "Dec 18", type: "test" },
+                      { action: "Medication refilled", date: "Dec 15", type: "med" },
+                      { action: "Virtual consultation", date: "Dec 12", type: "consult" },
+                      { action: "Weight logged", date: "Dec 10", type: "log" },
+                      { action: "Prescription uploaded", date: "Dec 8",type: "doc" },
                     ].map((item, index) => (
                       <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-xl">{item.icon}</span>
+                      
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">{item.action}</p>
                           <p className="text-xs text-gray-500">{item.date}</p>
@@ -335,22 +484,28 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-48 flex items-end justify-between gap-4">
-                    {patientMetrics.weight.map((weight, index) => (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div
-                          className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-500"
-                          style={{ height: `${((weight - 68) / 6) * 100}%` }}
-                        />
-                        <span className="text-xs font-medium text-gray-700 mt-2">{weight}</span>
-                        <span className="text-xs text-gray-500">
-                          {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index]}
-                        </span>
-                      </div>
-                    ))}
+                    {patientTrends.weight.map((weight, index) => {
+                      const minWeight = Math.min(...patientTrends.weight);
+                      const maxWeight = Math.max(...patientTrends.weight);
+                      const range = maxWeight - minWeight || 1;
+                      const height = ((weight - minWeight) / range) * 100;
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center">
+                          <div
+                            className="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-500"
+                            style={{ height: `${Math.max(height, 10)}%` }}
+                          />
+                          <span className="text-xs font-medium text-gray-700 mt-2">{weight}</span>
+                          <span className="text-xs text-gray-500">
+                            {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index]}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="mt-4 p-3 bg-emerald-50 rounded-lg">
                     <p className="text-sm text-emerald-700">
-                      <span className="font-semibold">-1.8 kg</span> over 6 months. Great progress! 🎉
+                      <span className="font-semibold">{(patientTrends.weight[0] - patientTrends.weight[patientTrends.weight.length - 1]).toFixed(1)} kg</span> change over 6 months. {patientTrends.weight[patientTrends.weight.length - 1] < patientTrends.weight[0] ? "Great progress! 🎉" : "Keep going! 💪"}
                     </p>
                   </div>
                 </CardContent>
@@ -363,23 +518,29 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="h-48 flex items-end justify-between gap-4">
-                    {patientMetrics.bloodPressure.map((bp, index) => (
-                      <div key={index} className="flex-1 flex flex-col items-center">
-                        <div
-                          className={`w-full rounded-t-lg transition-all ${bp > 120 ? "bg-gradient-to-t from-yellow-500 to-yellow-400" : "bg-gradient-to-t from-emerald-500 to-emerald-400"
-                            }`}
-                          style={{ height: `${((bp - 100) / 40) * 100}%` }}
-                        />
-                        <span className="text-xs font-medium text-gray-700 mt-2">{bp}</span>
-                        <span className="text-xs text-gray-500">
-                          {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index]}
-                        </span>
-                      </div>
-                    ))}
+                    {patientTrends.bloodPressure.map((bp, index) => {
+                      const minBP = Math.min(...patientTrends.bloodPressure);
+                      const maxBP = Math.max(...patientTrends.bloodPressure);
+                      const range = maxBP - minBP || 1;
+                      const height = ((bp - minBP) / range) * 100;
+                      const isElevated = bp > 120;
+                      return (
+                        <div key={index} className="flex-1 flex flex-col items-center">
+                          <div
+                            className={`w-full rounded-t-lg transition-all ${isElevated ? "bg-gradient-to-t from-yellow-500 to-yellow-400 hover:from-yellow-600 hover:to-yellow-500" : "bg-gradient-to-t from-emerald-500 to-emerald-400 hover:from-emerald-600 hover:to-emerald-500"}`}
+                            style={{ height: `${Math.max(height, 10)}%` }}
+                          />
+                          <span className="text-xs font-medium text-gray-700 mt-2">{bp}</span>
+                          <span className="text-xs text-gray-500">
+                            {["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][index]}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-700">
-                      Average: <span className="font-semibold">119 mmHg</span> - Within normal range
+                      Average: <span className="font-semibold">{(patientTrends.bloodPressure.reduce((a, b) => a + b) / patientTrends.bloodPressure.length).toFixed(0)} mmHg</span> - {Math.max(...patientTrends.bloodPressure) > 120 ? "Some readings elevated" : "Within normal range"}
                     </p>
                   </div>
                 </CardContent>

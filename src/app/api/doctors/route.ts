@@ -124,7 +124,6 @@ export async function GET(request: Request) {
       ent: "👂",
       ophthalmology: "👁️",
       ophthalmologist: "👁️",
-      gynecologist: "🤰",
       psychiatry: "🧠",
       psychiatrist: "🧠",
       dentistry: "🦷",

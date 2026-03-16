@@ -1,10 +1,10 @@
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-// GET - Fetch patients for doctors
-export async function GET() {
+// GET - Fetch patients for doctors or single patient details
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -25,7 +25,52 @@ export async function GET() {
       );
     }
 
-    // Get patients who have had appointments with this doctor
+    const { searchParams } = new URL(request.url);
+    const patientId = searchParams.get("patientId");
+
+    // If patientId is provided, fetch single patient details
+    if (patientId) {
+      const patient = await prisma.user.findUnique({
+        where: { id: patientId, role: "PATIENT" },
+        select: {
+          id: true,
+          email: true,
+          profile: {
+            select: {
+              firstName: true,
+              lastName: true,
+              age: true,
+              gender: true,
+              bloodGroup: true,
+              phone: true,
+              allergies: true,
+            },
+          },
+        },
+      });
+
+      if (!patient) {
+        return NextResponse.json(
+          { error: "Patient not found" },
+          { status: 404 },
+        );
+      }
+
+      return NextResponse.json({
+        patient: {
+          id: patient.id,
+          name: `${patient.profile?.firstName || ""} ${patient.profile?.lastName || ""}`.trim(),
+          email: patient.email,
+          age: patient.profile?.age,
+          gender: patient.profile?.gender,
+          bloodGroup: patient.profile?.bloodGroup,
+          phone: patient.profile?.phone,
+          allergies: patient.profile?.allergies,
+        },
+      });
+    }
+
+    // Original list patients logic
     const appointments = await prisma.appointment.findMany({
       where: { doctorId: session.user.id },
       select: { patientId: true },
