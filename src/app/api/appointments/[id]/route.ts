@@ -1,3 +1,12 @@
+import { authOptions } from "@/lib/auth";
+import {
+  sendAppointmentCancellationEmail,
+  sendAppointmentConfirmationEmail,
+} from "@/lib/email";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { NextResponse } from "next/server";
+
 // Helper function to format date as YYYY-MM-DD string
 function formatAppointmentDate(date: Date): string {
   const year = date.getUTCFullYear();
