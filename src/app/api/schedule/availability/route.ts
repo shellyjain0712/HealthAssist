@@ -266,7 +266,8 @@ export async function GET(request: NextRequest) {
 // Helper function to convert 12-hour format to 24-hour
 function convertTo24Hour(time12: string): string {
   const [time, period] = time12.split(" ");
-  let [hours, minutes] = time.split(":").map(Number);
+  const [hoursNum, minutes] = time.split(":").map(Number);
+  let hours = hoursNum;
 
   if (period === "PM" && hours !== 12) {
     hours += 12;
