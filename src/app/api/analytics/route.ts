@@ -201,10 +201,15 @@ async function getPatientAnalytics(patientId: string, timeRange: string) {
     ),
   ).length;
 
+  // Count prescriptions from health records
+  const prescriptionCount = healthRecords.filter(
+    (r) => r.category === "PRESCRIPTION",
+  ).length;
+
   // Calculate health score
   const healthScore = calculateHealthScore(
     rangeAppointments,
-    prescriptions.length,
+    prescriptionCount,
     labTests,
   );
 
