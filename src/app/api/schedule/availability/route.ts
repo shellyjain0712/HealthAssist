@@ -21,6 +21,7 @@ function timeToMinutes(time: string): number {
 }
 
 // Helper to convert minutes to time string (HH:MM)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function minutesToTime(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
@@ -28,6 +29,7 @@ function minutesToTime(minutes: number): string {
 }
 
 // Helper to format time 12-hour
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function formatTime12Hour(time: string): string {
   const [hours, minutes] = time.split(":").map(Number);
   const period = hours >= 12 ? "PM" : "AM";

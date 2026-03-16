@@ -306,7 +306,7 @@ function BookAppointmentContent() {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-red-600">⚠️ URGENT: Child's Emergency</h3>
+                  <h3 className="text-lg font-bold text-red-600">⚠️ URGENT: Child&apos;s Emergency</h3>
                   <p className="mt-2 text-sm text-gray-600">Your child needs immediate medical attention. Please complete this booking quickly and seek urgent pediatric care.</p>
                 </div>
               </div>

@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 async function getDoctorAnalytics(doctorId: string, timeRange: string) {
   // Calculate date range
   const now = new Date();
-  let startDate = new Date();
+  const startDate = new Date();
 
   switch (timeRange) {
     case "week":
@@ -114,11 +114,6 @@ async function getDoctorAnalytics(doctorId: string, timeRange: string) {
   for (let i = 5; i >= 0; i--) {
     const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
-    const prevMonthStart = new Date(
-      now.getFullYear(),
-      now.getMonth() - i - 1,
-      1,
-    );
 
     const monthApts = allAppointments.filter((apt) => {
       const aptDate = new Date(apt.date);
@@ -169,7 +164,7 @@ async function getDoctorAnalytics(doctorId: string, timeRange: string) {
 async function getPatientAnalytics(patientId: string, timeRange: string) {
   // Calculate date range
   const now = new Date();
-  let startDate = new Date();
+  const startDate = new Date();
 
   switch (timeRange) {
     case "week":

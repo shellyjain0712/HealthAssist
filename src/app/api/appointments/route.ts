@@ -141,7 +141,7 @@ export async function POST(request: Request) {
 
       // Convert time to minutes for comparison
       const [timePart, period] = time.split(" ");
-      let [hours, minutes] = timePart.split(":").map(Number);
+      const [hours, minutes] = timePart.split(":").map(Number);
       if (period === "PM" && hours !== 12) {
         hours += 12;
       } else if (period === "AM" && hours === 12) {

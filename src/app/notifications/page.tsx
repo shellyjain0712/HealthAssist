@@ -189,7 +189,7 @@ export default function NotificationsPage() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No Notifications Yet</h3>
-              <p className="text-gray-500 mb-6">You don't have any notifications. Start by booking an appointment!</p>
+              <p className="text-gray-500 mb-6">You don&apos;t have any notifications. Start by booking an appointment!</p>
               <Button
                 onClick={() => router.push("/appointments/book")}
                 className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
