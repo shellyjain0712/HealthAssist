@@ -189,11 +189,6 @@ async function getPatientAnalytics(patientId: string, timeRange: string) {
     (apt) => new Date(apt.date) >= startDate,
   );
 
-  // Fetch prescriptions
-  const prescriptions = await prisma.prescription.findMany({
-    where: { patientId },
-  });
-
   // Fetch health records
   const healthRecords = await prisma.healthRecord.findMany({
     where: { patientId },
