@@ -27,18 +27,18 @@ export default function NotificationsPage() {
     try {
       setLoading(true)
       const response = await fetch("/api/notifications")
-      
+
       if (!response.ok) {
         console.error(`API Error: ${response.status} ${response.statusText}`)
         return
       }
-      
+
       const contentType = response.headers.get("content-type")
       if (!contentType || !contentType.includes("application/json")) {
         console.error("Invalid response content type:", contentType)
         return
       }
-      
+
       const data = await response.json()
       if (data.notifications) {
         setNotifications(data.notifications)

@@ -1,4 +1,5 @@
 import { authOptions } from "@/lib/auth";
+import { formatUrgencyHint, predictUrgencyFromText } from "@/lib/ml/urgencyClassifier";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -60,6 +61,19 @@ const SYSTEM_PROMPT = `You are HealthAssist AI, a compassionate and knowledgeabl
 - Seizures
 
 **Remember:** You inform and guide - NEVER diagnose. You're a helpful companion, not a replacement for doctors.`;
+
+type UrgencyLevel = "LOW" | "MEDIUM" | "HIGH" | "EMERGENCY";
+
+const URGENCY_RANK: Record<UrgencyLevel, number> = {
+  LOW: 0,
+  MEDIUM: 1,
+  HIGH: 2,
+  EMERGENCY: 3,
+};
+
+function getHigherUrgency(current: UrgencyLevel, incoming: UrgencyLevel): UrgencyLevel {
+  return URGENCY_RANK[incoming] > URGENCY_RANK[current] ? incoming : current;
+}
 
 // GET - Fetch chat sessions
 export async function GET(request: NextRequest) {
@@ -133,6 +147,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Local ML triage (Naive Bayes) used as a supporting urgency signal.
+    const mlPrediction = predictUrgencyFromText(message);
+    const runtimeSystemPrompt = `${SYSTEM_PROMPT}\n\n${formatUrgencyHint(mlPrediction)}`;
+
     // Validate Gemini API key
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
@@ -196,7 +214,7 @@ export async function POST(request: NextRequest) {
       history: [
         {
           role: "user",
-          parts: [{ text: SYSTEM_PROMPT }],
+          parts: [{ text: runtimeSystemPrompt }],
         },
         {
           role: "model",
@@ -222,17 +240,14 @@ export async function POST(request: NextRequest) {
     const result = await chat.sendMessage(message);
     const aiResponse = result.response.text();
 
-    // Extract urgency level from AI response
-    let urgencyLevel: "LOW" | "MEDIUM" | "HIGH" | "EMERGENCY" = "LOW";
+    // Start with ML urgency and then merge with AI + keyword checks.
+    let urgencyLevel: UrgencyLevel = mlPrediction.label;
     const urgencyMatch = aiResponse.match(
       /urgency[:\s]*(LOW|MEDIUM|HIGH|EMERGENCY)/i,
     );
     if (urgencyMatch) {
-      urgencyLevel = urgencyMatch[1].toUpperCase() as
-        | "LOW"
-        | "MEDIUM"
-        | "HIGH"
-        | "EMERGENCY";
+      const aiUrgency = urgencyMatch[1].toUpperCase() as UrgencyLevel;
+      urgencyLevel = getHigherUrgency(urgencyLevel, aiUrgency);
     }
 
     // Check for emergency keywords in user message
@@ -279,6 +294,12 @@ export async function POST(request: NextRequest) {
         role: "assistant",
         content: aiResponse,
         createdAt: aiMessage.createdAt,
+      },
+      triage: {
+        source: "hybrid",
+        mlLabel: mlPrediction.label,
+        mlConfidence: Number(mlPrediction.confidence.toFixed(4)),
+        finalUrgency: urgencyLevel,
       },
     });
   } catch (error: any) {

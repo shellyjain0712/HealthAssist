@@ -57,14 +57,14 @@
 
 ## 🛠 Tech Stack
 
-| Category     | Technologies                                      |
-| ------------ | ------------------------------------------------- |
-| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS    |
-| **Backend**  | Next.js API Routes, NextAuth.js                   |
-| **Database** | PostgreSQL with Prisma ORM                        |
-| **AI**       | Google Gemini 1.5 Flash (Free tier, 15 RPM)       |
-| **Styling**  | Tailwind CSS, Radix UI Components                 |
-| **Email**    | Nodemailer                                        |
+| Category     | Technologies                                   |
+| ------------ | ---------------------------------------------- |
+| **Frontend** | Next.js 15, React 19, TypeScript, Tailwind CSS |
+| **Backend**  | Next.js API Routes, NextAuth.js                |
+| **Database** | PostgreSQL with Prisma ORM                     |
+| **AI**       | Google Gemini 1.5 Flash (Free tier, 15 RPM)    |
+| **Styling**  | Tailwind CSS, Radix UI Components              |
+| **Email**    | Nodemailer                                     |
 
 ---
 
